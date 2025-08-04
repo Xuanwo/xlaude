@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use colored::Colorize;
+use std::fs;
+use std::path::Path;
 
 use crate::git::{execute_git, get_repo_name, is_base_branch};
 use crate::state::{WorktreeInfo, XlaudeState};
@@ -42,6 +44,18 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
         .parent()
         .unwrap()
         .join(format!("{repo_name}-{worktree_name}"));
+
+    // Copy CLAUDE.local.md if it exists
+    let claude_local_md = Path::new("CLAUDE.local.md");
+    if claude_local_md.exists() {
+        let target_path = worktree_path.join("CLAUDE.local.md");
+        fs::copy(claude_local_md, &target_path)
+            .context("Failed to copy CLAUDE.local.md")?;
+        println!(
+            "{} Copied CLAUDE.local.md to worktree",
+            "📄".green()
+        );
+    }
 
     // Save state
     let mut state = XlaudeState::load()?;
