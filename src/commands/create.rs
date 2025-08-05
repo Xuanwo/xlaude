@@ -49,12 +49,8 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
     let claude_local_md = Path::new("CLAUDE.local.md");
     if claude_local_md.exists() {
         let target_path = worktree_path.join("CLAUDE.local.md");
-        fs::copy(claude_local_md, &target_path)
-            .context("Failed to copy CLAUDE.local.md")?;
-        println!(
-            "{} Copied CLAUDE.local.md to worktree",
-            "📄".green()
-        );
+        fs::copy(claude_local_md, &target_path).context("Failed to copy CLAUDE.local.md")?;
+        println!("{} Copied CLAUDE.local.md to worktree", "📄".green());
     }
 
     // Save state
