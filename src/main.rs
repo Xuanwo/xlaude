@@ -7,7 +7,7 @@ mod git;
 mod state;
 mod utils;
 
-use commands::{handle_add, handle_create, handle_delete, handle_list, handle_open};
+use commands::{handle_add, handle_clean, handle_create, handle_delete, handle_list, handle_open};
 
 #[derive(Parser)]
 #[command(name = "xlaude")]
@@ -41,6 +41,8 @@ enum Commands {
     },
     /// List all active Claude instances
     List,
+    /// Clean up invalid worktrees from state
+    Clean,
 }
 
 fn main() -> Result<()> {
@@ -52,5 +54,6 @@ fn main() -> Result<()> {
         Commands::Delete { name } => handle_delete(name),
         Commands::Add { name } => handle_add(name),
         Commands::List => handle_list(),
+        Commands::Clean => handle_clean(),
     }
 }

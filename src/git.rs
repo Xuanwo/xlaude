@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub fn execute_git(args: &[&str]) -> Result<String> {
@@ -59,4 +59,17 @@ pub fn is_in_worktree() -> Result<bool> {
         }
         Err(_) => Ok(false),
     }
+}
+
+pub fn list_worktrees() -> Result<Vec<PathBuf>> {
+    let output = execute_git(&["worktree", "list", "--porcelain"])?;
+    let mut worktrees = Vec::new();
+
+    for line in output.lines() {
+        if let Some(path) = line.strip_prefix("worktree ") {
+            worktrees.push(PathBuf::from(path));
+        }
+    }
+
+    Ok(worktrees)
 }
