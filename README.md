@@ -88,6 +88,17 @@ Performs safety checks for:
 - Unpushed commits
 - Confirms before deletion
 
+### Clean up invalid worktrees
+
+```bash
+xlaude clean
+```
+
+Removes worktrees from xlaude's state that no longer exist in git. This is useful when:
+- You've used `git worktree remove` directly
+- Worktree directories were manually deleted
+- Maintaining consistency between git and xlaude state
+
 ## Typical Workflow
 
 1. **Start a new feature**:
