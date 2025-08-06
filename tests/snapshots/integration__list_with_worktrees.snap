@@ -2,7 +2,7 @@
 source: tests/integration.rs
 expression: redacted_stdout
 ---
-📋 Active worktrees:
+📋 Active worktrees/workspaces:
 
   📦 test-repo
     • feature-a

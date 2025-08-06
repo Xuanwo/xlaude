@@ -2,6 +2,6 @@
 source: tests/integration.rs
 expression: redacted
 ---
-🔍 Checking for invalid worktrees...
-  ❌ Found invalid worktree: test-repo/invalid (/non/existent/path)
-✅ Removed 1 invalid worktree
+🔍 Checking for invalid worktrees/workspaces...
+  ❌ Found invalid worktree/workspace: test-repo/invalid (/non/existent/path)
+✅ Removed 1 invalid worktree/workspace

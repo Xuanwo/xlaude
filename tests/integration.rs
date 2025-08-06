@@ -442,7 +442,8 @@ fn test_clean_with_no_invalid() {
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     assert!(
-        stdout.contains("No invalid worktrees found") || stdout.contains("All worktrees are valid")
+        stdout.contains("No invalid worktrees found")
+            || stdout.contains("All worktrees/workspaces are valid")
     );
 }
 

@@ -10,11 +10,11 @@ pub fn handle_list() -> Result<()> {
     let state = XlaudeState::load()?;
 
     if state.worktrees.is_empty() {
-        println!("{} No active worktrees", "📭".yellow());
+        println!("{} No active worktrees/workspaces", "📭".yellow());
         return Ok(());
     }
 
-    println!("{} Active worktrees:", "📋".cyan());
+    println!("{} Active worktrees/workspaces:", "📋".cyan());
     println!();
 
     // Group worktrees by repository

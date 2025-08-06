@@ -1,12 +1,13 @@
 # xlaude - Xuanwo's Claude Code
 
-A CLI tool for managing Claude instances with git worktree for parallel development workflows.
+A CLI tool for managing Claude instances with git worktrees or jj workspaces for parallel development workflows.
 
 ## Features
 
-- **Create isolated workspaces**: Each Claude instance runs in its own git worktree
+- **VCS Support**: Works with both Git worktrees and Jujutsu (jj) workspaces
+- **Create isolated workspaces**: Each Claude instance runs in its own worktree/workspace
 - **Seamless switching**: Open and switch between multiple development contexts
-- **Smart cleanup**: Safely delete worktrees with uncommitted change detection
+- **Smart cleanup**: Safely delete worktrees/workspaces with uncommitted change detection
 - **Session tracking**: View Claude conversation history across instances
 - **Random naming**: Generate memorable names using BIP39 word list
 
@@ -36,7 +37,9 @@ xlaude create feature-auth
 xlaude create
 ```
 
-This creates a new git worktree at `../<repo>-<name>` and a corresponding branch.
+This creates:
+- **Git**: A new worktree at `../<repo>-<name>` and a corresponding branch
+- **Jujutsu**: A new workspace at `../<repo>-<name>` with its own working copy
 
 ### Open an existing workspace
 
@@ -53,10 +56,10 @@ xlaude open
 
 This switches to the worktree directory and launches Claude with `--dangerously-skip-permissions`. When run without arguments in a worktree directory, it opens the current worktree directly.
 
-### Add existing worktree
+### Add existing worktree/workspace
 
 ```bash
-# Add current worktree with branch name
+# Add current worktree/workspace with its name
 cd ../myproject-bugfix
 xlaude add
 
@@ -70,7 +73,7 @@ xlaude add hotfix
 xlaude list
 ```
 
-Shows all managed worktrees with:
+Shows all managed worktrees/workspaces with:
 - Name, repository, and path
 - Creation time
 - Recent Claude sessions (up to 3)
@@ -92,16 +95,16 @@ Performs safety checks for:
 - Branch merge status
 - Confirms before deletion when needed
 
-### Clean up invalid worktrees
+### Clean up invalid worktrees/workspaces
 
 ```bash
 xlaude clean
 ```
 
-Removes worktrees from xlaude's state that no longer exist in git. This is useful when:
-- You've used `git worktree remove` directly
-- Worktree directories were manually deleted
-- Maintaining consistency between git and xlaude state
+Removes worktrees/workspaces from xlaude's state that no longer exist. This is useful when:
+- You've used `git worktree remove` or `jj workspace forget` directly
+- Worktree/workspace directories were manually deleted
+- Maintaining consistency between VCS and xlaude state
 
 ## Typical Workflow
 
@@ -140,7 +143,7 @@ State is persisted to `~/.config/xlaude/state.json`.
 
 ## Requirements
 
-- Git with worktree support
+- Git with worktree support OR Jujutsu (jj)
 - Claude CLI installed
 - Rust (for building from source)
 

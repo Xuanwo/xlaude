@@ -4,8 +4,10 @@ use clap::{Parser, Subcommand};
 mod claude;
 mod commands;
 mod git;
+mod jj;
 mod state;
 mod utils;
+mod vcs;
 
 use commands::{handle_add, handle_clean, handle_create, handle_delete, handle_list, handle_open};
 

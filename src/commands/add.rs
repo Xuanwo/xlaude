@@ -1,51 +1,64 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::Utc;
 use colored::Colorize;
 
-use crate::git::{get_current_branch, get_repo_name, is_in_worktree};
 use crate::state::{WorktreeInfo, XlaudeState};
+use crate::vcs::{self, VcsType};
 
 pub fn handle_add(name: Option<String>) -> Result<()> {
-    // Check if we're in a git repository
-    let repo_name = get_repo_name().context("Not in a git repository")?;
+    // Detect VCS type
+    let vcs_type = vcs::detect_vcs()?;
 
-    // Check if we're in a worktree
-    if !is_in_worktree()? {
-        anyhow::bail!("Current directory is not a git worktree");
+    // Get repository name
+    let repo_name = vcs::get_repo_name(&vcs_type)?;
+
+    // Check if we're in a worktree/workspace
+    if !vcs::is_in_worktree_or_workspace(&vcs_type)? {
+        let workspace_type = match vcs_type {
+            VcsType::Git => "git worktree",
+            VcsType::Jj => "jj workspace",
+        };
+        anyhow::bail!("Current directory is not a {}", workspace_type);
     }
 
-    // Get current branch name
-    let current_branch = get_current_branch()?;
+    // Get current branch/workspace name
+    let current_branch_or_workspace = vcs::get_current_branch_or_workspace(&vcs_type)?;
 
-    // Use provided name or default to branch name
-    let worktree_name = name.unwrap_or_else(|| current_branch.clone());
+    // Use provided name or default to branch/workspace name
+    let workspace_name = name.unwrap_or_else(|| current_branch_or_workspace.clone());
 
     // Get current directory
     let current_dir = std::env::current_dir()?;
 
     // Check if already managed
     let mut state = XlaudeState::load()?;
-    let key = XlaudeState::make_key(&repo_name, &worktree_name);
+    let key = XlaudeState::make_key(&repo_name, &workspace_name);
     if state.worktrees.contains_key(&key) {
         anyhow::bail!(
-            "Worktree '{}/{}' is already managed by xlaude",
+            "Workspace '{}/{}' is already managed by xlaude",
             repo_name,
-            worktree_name
+            workspace_name
         );
     }
 
+    let workspace_type = match vcs_type {
+        VcsType::Git => "worktree",
+        VcsType::Jj => "workspace",
+    };
+
     println!(
-        "{} Adding worktree '{}' to xlaude management...",
+        "{} Adding {} '{}' to xlaude management...",
         "➕".green(),
-        worktree_name.cyan()
+        workspace_type,
+        workspace_name.cyan()
     );
 
     // Add to state
     state.worktrees.insert(
         key,
         WorktreeInfo {
-            name: worktree_name.clone(),
-            branch: current_branch,
+            name: workspace_name.clone(),
+            branch: current_branch_or_workspace,
             path: current_dir.clone(),
             repo_name,
             created_at: Utc::now(),
@@ -54,9 +67,15 @@ pub fn handle_add(name: Option<String>) -> Result<()> {
     state.save()?;
 
     println!(
-        "{} Worktree '{}' added successfully",
+        "{} {} '{}' added successfully",
         "✅".green(),
-        worktree_name.cyan()
+        workspace_type
+            .chars()
+            .next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or_default()
+            + &workspace_type[1..],
+        workspace_name.cyan()
     );
     println!("  {} {}", "Path:".bright_black(), current_dir.display());
 

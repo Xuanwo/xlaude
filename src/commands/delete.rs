@@ -5,6 +5,7 @@ use dialoguer::Confirm;
 use crate::git::{execute_git, has_unpushed_commits, is_working_tree_clean};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::execute_in_dir;
+use crate::vcs::{self, VcsType};
 
 /// Represents the result of various checks performed before deletion
 struct DeletionChecks {
@@ -29,16 +30,18 @@ struct DeletionConfig {
     is_interactive: bool,
     worktree_exists: bool,
     is_current_directory: bool,
+    vcs_type: VcsType,
 }
 
 impl DeletionConfig {
-    fn from_env(worktree_info: &WorktreeInfo) -> Result<Self> {
+    fn from_env(worktree_info: &WorktreeInfo, vcs_type: VcsType) -> Result<Self> {
         let current_dir = std::env::current_dir()?;
 
         Ok(Self {
             is_interactive: std::env::var("XLAUDE_NON_INTERACTIVE").is_err(),
             worktree_exists: worktree_info.path.exists(),
             is_current_directory: current_dir == worktree_info.path,
+            vcs_type,
         })
     }
 }
@@ -46,48 +49,65 @@ impl DeletionConfig {
 pub fn handle_delete(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
 
+    // Detect VCS type
+    let vcs_type = vcs::detect_vcs()?;
+
     let (key, worktree_info) = find_worktree_to_delete(&state, name)?;
-    let config = DeletionConfig::from_env(&worktree_info)?;
+    let config = DeletionConfig::from_env(&worktree_info, vcs_type)?;
+
+    let workspace_type = match config.vcs_type {
+        VcsType::Git => "worktree",
+        VcsType::Jj => "workspace",
+    };
 
     println!(
-        "{} Checking worktree '{}'...",
+        "{} Checking {} '{}'...",
         "🔍".yellow(),
+        workspace_type,
         worktree_info.name.cyan()
     );
 
     // Handle case where worktree directory doesn't exist
     if !config.worktree_exists {
-        if !handle_missing_worktree(&worktree_info, &config)? {
+        if !handle_missing_worktree(&worktree_info, &config, workspace_type)? {
             println!("{} Cancelled", "❌".red());
             return Ok(());
         }
     } else {
-        // Check branch status first (for output consistency)
-        println!(
-            "{} Checking branch '{}'...",
-            "🔍".yellow(),
-            worktree_info.branch
-        );
+        // For Git, check branch status first (for output consistency)
+        if config.vcs_type == VcsType::Git {
+            println!(
+                "{} Checking branch '{}'...",
+                "🔍".yellow(),
+                worktree_info.branch
+            );
+        }
 
         // Perform deletion checks
-        let checks = perform_deletion_checks(&worktree_info)?;
+        let checks = perform_deletion_checks(&worktree_info, &config)?;
 
-        if !confirm_deletion(&worktree_info, &checks, &config)? {
+        if !confirm_deletion(&worktree_info, &checks, &config, workspace_type)? {
             println!("{} Cancelled", "❌".red());
             return Ok(());
         }
     }
 
     // Execute deletion
-    perform_deletion(&worktree_info, &config)?;
+    perform_deletion(&worktree_info, &config, workspace_type)?;
 
     // Update state
     state.worktrees.remove(&key);
     state.save()?;
 
     println!(
-        "{} Worktree '{}' deleted successfully",
+        "{} {} '{}' deleted successfully",
         "✅".green(),
+        workspace_type
+            .chars()
+            .next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or_default()
+            + &workspace_type[1..],
         worktree_info.name.cyan()
     );
     Ok(())
@@ -129,20 +149,34 @@ fn find_current_worktree(state: &XlaudeState) -> Result<(String, WorktreeInfo)> 
 }
 
 /// Handle the case where worktree directory doesn't exist
-fn handle_missing_worktree(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Result<bool> {
+fn handle_missing_worktree(
+    worktree_info: &WorktreeInfo,
+    config: &DeletionConfig,
+    workspace_type: &str,
+) -> Result<bool> {
     println!(
-        "{} Worktree directory not found at {}",
+        "{} {} directory not found at {}",
         "⚠️ ".yellow(),
+        workspace_type
+            .chars()
+            .next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or_default()
+            + &workspace_type[1..],
         worktree_info.path.display()
     );
     println!(
-        "  {} The worktree may have been manually deleted",
-        "ℹ️".blue()
+        "  {} The {} may have been manually deleted",
+        "ℹ️".blue(),
+        workspace_type
     );
 
     if config.is_interactive {
         Confirm::new()
-            .with_prompt("Remove this worktree from xlaude management?")
+            .with_prompt(format!(
+                "Remove this {} from xlaude management?",
+                workspace_type
+            ))
             .default(true)
             .interact()
             .context("Failed to get user confirmation")
@@ -152,15 +186,28 @@ fn handle_missing_worktree(worktree_info: &WorktreeInfo, config: &DeletionConfig
 }
 
 /// Perform all checks needed before deletion
-fn perform_deletion_checks(worktree_info: &WorktreeInfo) -> Result<DeletionChecks> {
+fn perform_deletion_checks(
+    worktree_info: &WorktreeInfo,
+    config: &DeletionConfig,
+) -> Result<DeletionChecks> {
     execute_in_dir(&worktree_info.path, || {
-        let has_uncommitted_changes = !is_working_tree_clean()?;
-        let has_unpushed_commits = has_unpushed_commits();
+        let has_uncommitted_changes = match config.vcs_type {
+            VcsType::Git => !is_working_tree_clean()?,
+            VcsType::Jj => !vcs::is_working_tree_clean(&config.vcs_type)?,
+        };
 
-        // Check branch merge status in main repo
-        let main_repo_path = get_main_repo_path(worktree_info)?;
-        let (branch_merged_via_git, branch_merged_via_pr) =
-            check_branch_merge_status(&main_repo_path, &worktree_info.branch)?;
+        let has_unpushed_commits = match config.vcs_type {
+            VcsType::Git => has_unpushed_commits(),
+            VcsType::Jj => vcs::has_unpushed_changes(&config.vcs_type)?,
+        };
+
+        // Branch merge checks only apply to Git
+        let (branch_merged_via_git, branch_merged_via_pr) = if config.vcs_type == VcsType::Git {
+            let main_repo_path = get_main_repo_path(worktree_info)?;
+            check_branch_merge_status(&main_repo_path, &worktree_info.branch)?
+        } else {
+            (false, false)
+        };
 
         Ok(DeletionChecks {
             has_uncommitted_changes,
@@ -171,7 +218,7 @@ fn perform_deletion_checks(worktree_info: &WorktreeInfo) -> Result<DeletionCheck
     })
 }
 
-/// Check if branch is merged via git or PR
+/// Check if branch is merged via git or PR (Git only)
 fn check_branch_merge_status(
     main_repo_path: &std::path::Path,
     branch: &str,
@@ -215,33 +262,41 @@ fn confirm_deletion(
     worktree_info: &WorktreeInfo,
     checks: &DeletionChecks,
     config: &DeletionConfig,
+    workspace_type: &str,
 ) -> Result<bool> {
     // Show warnings for pending work
     if checks.has_pending_work() {
-        show_pending_work_warnings(checks);
+        show_pending_work_warnings(checks, config.vcs_type);
 
         if !config.is_interactive {
             return Ok(false); // Don't delete in non-interactive mode with pending work
         }
 
         return Confirm::new()
-            .with_prompt("Are you sure you want to delete this worktree?")
+            .with_prompt(format!(
+                "Are you sure you want to delete this {workspace_type}?"
+            ))
             .default(false)
             .interact()
             .context("Failed to get user confirmation");
     }
 
-    // Show branch merge status
-    if !checks.branch_is_merged() {
-        show_unmerged_branch_warning(worktree_info);
-    } else if checks.branch_merged_via_pr && !checks.branch_merged_via_git {
-        println!("  {} Branch was merged via PR", "ℹ️".blue());
+    // Show branch merge status (Git only)
+    if config.vcs_type == VcsType::Git {
+        if !checks.branch_is_merged() {
+            show_unmerged_branch_warning(worktree_info);
+        } else if checks.branch_merged_via_pr && !checks.branch_merged_via_git {
+            println!("  {} Branch was merged via PR", "ℹ️".blue());
+        }
     }
 
     // Ask for confirmation in interactive mode
     if config.is_interactive {
         Confirm::new()
-            .with_prompt(format!("Delete worktree '{}'?", worktree_info.name))
+            .with_prompt(format!(
+                "Delete {} '{}'?",
+                workspace_type, worktree_info.name
+            ))
             .default(true)
             .interact()
             .context("Failed to get user confirmation")
@@ -251,13 +306,17 @@ fn confirm_deletion(
 }
 
 /// Show warnings for uncommitted changes or unpushed commits
-fn show_pending_work_warnings(checks: &DeletionChecks) {
+fn show_pending_work_warnings(checks: &DeletionChecks, vcs_type: VcsType) {
     println!();
     if checks.has_uncommitted_changes {
         println!("{} You have uncommitted changes", "⚠️ ".red());
     }
     if checks.has_unpushed_commits {
-        println!("{} You have unpushed commits", "⚠️ ".red());
+        let unpushed_text = match vcs_type {
+            VcsType::Git => "unpushed commits",
+            VcsType::Jj => "unpushed changes",
+        };
+        println!("{} You have {}", "⚠️ ".red(), unpushed_text);
     }
 }
 
@@ -272,7 +331,19 @@ fn show_unmerged_branch_warning(worktree_info: &WorktreeInfo) {
 }
 
 /// Perform the actual deletion of worktree and branch
-fn perform_deletion(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Result<()> {
+fn perform_deletion(
+    worktree_info: &WorktreeInfo,
+    config: &DeletionConfig,
+    workspace_type: &str,
+) -> Result<()> {
+    match config.vcs_type {
+        VcsType::Git => perform_git_deletion(worktree_info, config),
+        VcsType::Jj => perform_jj_deletion(worktree_info, config, workspace_type),
+    }
+}
+
+/// Perform Git-specific deletion
+fn perform_git_deletion(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Result<()> {
     let main_repo_path = get_main_repo_path(worktree_info)?;
 
     // Change to main repo if we're deleting current directory
@@ -290,6 +361,24 @@ fn perform_deletion(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Re
 
         Ok(())
     })
+}
+
+/// Perform jj-specific deletion
+fn perform_jj_deletion(
+    worktree_info: &WorktreeInfo,
+    config: &DeletionConfig,
+    workspace_type: &str,
+) -> Result<()> {
+    // For jj, we need to change to a different directory if deleting current
+    if config.is_current_directory {
+        let main_repo_path = get_main_repo_path(worktree_info)?;
+        std::env::set_current_dir(&main_repo_path)
+            .context("Failed to change to main repository")?;
+    }
+
+    println!("{} Removing {}...", "🗑️ ".yellow(), workspace_type);
+    vcs::remove_worktree_or_workspace(&config.vcs_type, &worktree_info.name, &worktree_info.path)?;
+    Ok(())
 }
 
 /// Remove the worktree from git

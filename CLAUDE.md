@@ -1,46 +1,48 @@
 # xlaude - Claude 实例管理工具
 
-xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktree 实现多分支并行开发。
+xlaude 是一个用于管理 Claude 实例的命令行工具，支持通过 git worktree 或 jj workspace 实现多分支并行开发。
 
 ## 核心功能
 
 ### xlaude create [name]
-创建新的 worktree 和分支：
-- 必须在 main/master/develop 分支上执行
+创建新的 worktree/workspace：
+- Git: 必须在 main/master/develop 分支上执行
+- Jj: 可以从任意 revision 创建新 workspace
 - 如果不提供 name，自动从 BIP39 词库随机选择一个词
-- 创建新分支 `<name>`
-- 创建 worktree 到 `../<repo-name>-<name>` 目录
+- Git: 创建新分支 `<name>`
+- 创建 worktree/workspace 到 `../<repo-name>-<name>` 目录
 - **不会自动启动 Claude**
 
 ### xlaude open [name]
-打开已存在的 worktree 并启动 Claude：
-- 有参数：打开指定的 worktree
+打开已存在的 worktree/workspace 并启动 Claude：
+- 有参数：打开指定的 worktree/workspace
 - 无参数：
-  - 如果当前目录是 worktree（非 main/master/develop）：直接打开当前 worktree
-  - 如果当前 worktree 未被管理：询问是否添加并打开
+  - 如果当前目录是 worktree/workspace（非 main/master/develop）：直接打开当前 worktree/workspace
+  - 如果当前 worktree/workspace 未被管理：询问是否添加并打开
   - 否则：显示交互式选择列表
-- 切换到 worktree 目录
+- 切换到 worktree/workspace 目录
 - 启动 `claude --dangerously-skip-permissions`
 - 继承所有环境变量
 
 ### xlaude delete [name]
-删除 worktree 并清理：
-- 有参数：删除指定的 worktree
-- 无参数：删除当前所在的 worktree
-- 检查未提交的修改和未推送的 commit
-- 检查分支是否已完全合并，未合并时询问是否强制删除
+删除 worktree/workspace 并清理：
+- 有参数：删除指定的 worktree/workspace
+- 无参数：删除当前所在的 worktree/workspace
+- 检查未提交的修改和未推送的 commit/changes
+- Git: 检查分支是否已完全合并，未合并时询问是否强制删除
 - 需要时进行二次确认
-- 自动删除 worktree 和本地分支（如果安全）
+- Git: 自动删除 worktree 和本地分支（如果安全）
+- Jj: 自动 forget workspace 并删除目录
 
 ### xlaude add [name]
-将当前 worktree 添加到 xlaude 管理：
-- 必须在 git worktree 中执行
-- 如果不提供 name，默认使用当前分支名
+将当前 worktree/workspace 添加到 xlaude 管理：
+- 必须在 git worktree 或 jj workspace 中执行
+- 如果不提供 name，默认使用当前分支名/workspace名
 - 检查是否已被管理，避免重复添加
-- 适用于手动创建的 worktree 或从其他地方克隆的项目
+- 适用于手动创建的 worktree/workspace 或从其他地方克隆的项目
 
 ### xlaude list
-列出所有活跃的 worktree，显示：
+列出所有活跃的 worktree/workspace，显示：
 - 名称
 - 仓库名
 - 路径
@@ -60,7 +62,8 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 ## 技术实现
 
 - 使用 Rust 开发
-- 直接调用系统 git 命令
+- 自动检测 VCS 类型（git 或 jj）
+- 直接调用系统 git/jj 命令
 - 状态持久化到 `~/.config/xlaude/state.json`
   - Worktree key 格式：`<repo-name>/<worktree-name>`（v0.3+）
   - 自动迁移旧版本格式到新格式

@@ -4,64 +4,69 @@ use colored::Colorize;
 use std::fs;
 use std::path::Path;
 
-use crate::git::{execute_git, get_repo_name, is_base_branch};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::generate_random_name;
+use crate::vcs::{self, VcsType};
 
 pub fn handle_create(name: Option<String>) -> Result<()> {
-    // Check if we're in a git repository
-    let repo_name = get_repo_name().context("Not in a git repository")?;
+    // Detect VCS type
+    let vcs_type = vcs::detect_vcs()?;
 
-    // Check if we're on a base branch
-    if !is_base_branch()? {
+    // Get repository name
+    let repo_name = vcs::get_repo_name(&vcs_type)?;
+
+    // Check if we're on a base branch (only for git)
+    if vcs_type == VcsType::Git && !vcs::is_on_base_branch(&vcs_type)? {
         anyhow::bail!(
             "Must be on a base branch (main, master, or develop) to create a new worktree"
         );
     }
 
     // Generate name if not provided
-    let worktree_name = match name {
+    let workspace_name = match name {
         Some(n) => n,
         None => generate_random_name()?,
     };
 
+    let workspace_type = match vcs_type {
+        VcsType::Git => "worktree",
+        VcsType::Jj => "workspace",
+    };
+
     println!(
-        "{} Creating worktree '{}'...",
+        "{} Creating {} '{}'...",
         "✨".green(),
-        worktree_name.cyan()
+        workspace_type,
+        workspace_name.cyan()
     );
 
-    // Create branch
-    execute_git(&["branch", &worktree_name]).context("Failed to create branch")?;
-
-    // Create worktree
-    let worktree_dir = format!("../{repo_name}-{worktree_name}");
-    execute_git(&["worktree", "add", &worktree_dir, &worktree_name])
-        .context("Failed to create worktree")?;
-
-    // Get absolute path
-    let worktree_path = std::env::current_dir()?
+    // Create workspace directory path
+    let workspace_dir = format!("../{repo_name}-{workspace_name}");
+    let workspace_path = std::env::current_dir()?
         .parent()
         .unwrap()
-        .join(format!("{repo_name}-{worktree_name}"));
+        .join(format!("{repo_name}-{workspace_name}"));
+
+    // Create worktree/workspace
+    vcs::create_worktree_or_workspace(&vcs_type, &workspace_name, Path::new(&workspace_dir))?;
 
     // Copy CLAUDE.local.md if it exists
     let claude_local_md = Path::new("CLAUDE.local.md");
     if claude_local_md.exists() {
-        let target_path = worktree_path.join("CLAUDE.local.md");
+        let target_path = workspace_path.join("CLAUDE.local.md");
         fs::copy(claude_local_md, &target_path).context("Failed to copy CLAUDE.local.md")?;
-        println!("{} Copied CLAUDE.local.md to worktree", "📄".green());
+        println!("{} Copied CLAUDE.local.md to workspace", "📄".green());
     }
 
     // Save state
     let mut state = XlaudeState::load()?;
-    let key = XlaudeState::make_key(&repo_name, &worktree_name);
+    let key = XlaudeState::make_key(&repo_name, &workspace_name);
     state.worktrees.insert(
         key,
         WorktreeInfo {
-            name: worktree_name.clone(),
-            branch: worktree_name.clone(),
-            path: worktree_path.clone(),
+            name: workspace_name.clone(),
+            branch: workspace_name.clone(), // For jj, this will be the workspace name
+            path: workspace_path.clone(),
             repo_name,
             created_at: Utc::now(),
         },
@@ -69,15 +74,21 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
     state.save()?;
 
     println!(
-        "{} Worktree created at: {}",
+        "{} {} created at: {}",
         "✅".green(),
-        worktree_path.display()
+        workspace_type
+            .chars()
+            .next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or_default()
+            + &workspace_type[1..],
+        workspace_path.display()
     );
     println!(
         "  {} To open it, run: {} {}",
         "💡".cyan(),
         "xlaude open".cyan(),
-        worktree_name.cyan()
+        workspace_name.cyan()
     );
 
     Ok(())

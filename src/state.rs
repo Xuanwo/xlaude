@@ -3,7 +3,8 @@ use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +30,23 @@ impl XlaudeState {
     pub fn load() -> Result<Self> {
         let config_path = get_config_path()?;
         if config_path.exists() {
-            let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
+            // Open file with shared lock for reading
+            let mut file = OpenOptions::new()
+                .read(true)
+                .open(&config_path)
+                .context("Failed to open config file")?;
+
+            // Acquire shared lock (blocks until available)
+            file.lock_shared()
+                .context("Failed to acquire shared lock on config file")?;
+
+            let mut content = String::new();
+            file.read_to_string(&mut content)
+                .context("Failed to read config file")?;
+
+            // Lock is automatically released when file is dropped
+            drop(file);
+
             let mut state: Self =
                 serde_json::from_str(&content).context("Failed to parse config file")?;
 
@@ -79,8 +96,28 @@ impl XlaudeState {
         if let Some(parent) = config_path.parent() {
             fs::create_dir_all(parent).context("Failed to create config directory")?;
         }
+
+        // Serialize state first (before acquiring lock)
         let content = serde_json::to_string_pretty(self).context("Failed to serialize state")?;
-        fs::write(&config_path, content).context("Failed to write config file")?;
+
+        // Open or create file with exclusive lock for writing
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&config_path)
+            .context("Failed to open config file for writing")?;
+
+        // Acquire exclusive lock (blocks until available)
+        file.lock()
+            .context("Failed to acquire exclusive lock on config file")?;
+
+        // Write content
+        file.write_all(content.as_bytes())
+            .context("Failed to write config file")?;
+        file.flush().context("Failed to flush config file")?;
+
+        // Lock is automatically released when file is dropped
         Ok(())
     }
 }

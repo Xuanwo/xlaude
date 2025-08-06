@@ -3,19 +3,22 @@ use colored::Colorize;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use crate::git::list_worktrees;
 use crate::state::XlaudeState;
 use crate::utils::execute_in_dir;
+use crate::vcs::{self, WorkspaceInfo};
 
 pub fn handle_clean() -> Result<()> {
     let mut state = XlaudeState::load()?;
 
     if state.worktrees.is_empty() {
-        println!("{} No worktrees in state", "✨".green());
+        println!("{} No worktrees/workspaces in state", "✨".green());
         return Ok(());
     }
 
-    println!("{} Checking for invalid worktrees...", "🔍".cyan());
+    println!(
+        "{} Checking for invalid worktrees/workspaces...",
+        "🔍".cyan()
+    );
 
     // Collect all actual worktrees from all repositories
     let actual_worktrees = collect_all_worktrees(&state)?;
@@ -28,7 +31,7 @@ pub fn handle_clean() -> Result<()> {
         .filter_map(|(name, info)| {
             if !actual_worktrees.contains(&info.path) {
                 println!(
-                    "  {} Found invalid worktree: {} ({})",
+                    "  {} Found invalid worktree/workspace: {} ({})",
                     "❌".red(),
                     name.yellow(),
                     info.path.display()
@@ -49,13 +52,14 @@ pub fn handle_clean() -> Result<()> {
     if removed_count > 0 {
         state.save()?;
         println!(
-            "{} Removed {} invalid worktree{}",
+            "{} Removed {} invalid worktree{}/workspace{}",
             "✅".green(),
             removed_count,
+            if removed_count == 1 { "" } else { "s" },
             if removed_count == 1 { "" } else { "s" }
         );
     } else {
-        println!("{} All worktrees are valid", "✨".green());
+        println!("{} All worktrees/workspaces are valid", "✨".green());
     }
 
     Ok(())
@@ -71,12 +75,25 @@ fn collect_all_worktrees(state: &XlaudeState) -> Result<HashSet<PathBuf>> {
         .filter_map(|info| info.path.parent().map(|p| p.join(&info.repo_name)))
         .collect();
 
-    // Collect worktrees from each repository
+    // Collect worktrees/workspaces from each repository
     for repo_path in repo_paths {
-        if repo_path.exists()
-            && let Ok(worktrees) = execute_in_dir(&repo_path, list_worktrees)
-        {
-            all_worktrees.extend(worktrees);
+        if repo_path.exists() {
+            // Use execute_in_dir to safely change directories
+            let _ = execute_in_dir(&repo_path, || {
+                // Detect VCS type and get workspaces
+                if let Ok(vcs_type) = vcs::detect_vcs()
+                    && let Ok(workspaces) = vcs::list_worktrees_or_workspaces(&vcs_type)
+                {
+                    // Extract paths from WorkspaceInfo
+                    for workspace in workspaces {
+                        match workspace {
+                            WorkspaceInfo::Git(path) => all_worktrees.insert(path),
+                            WorkspaceInfo::Jj(path) => all_worktrees.insert(path),
+                        };
+                    }
+                }
+                Ok(())
+            });
         }
     }
 
