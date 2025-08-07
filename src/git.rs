@@ -34,26 +34,29 @@ pub fn get_repo_name() -> Result<String> {
         };
         return Ok(repo_name);
     }
-    
+
     // If no remote, use the directory name of the main repository
     get_repo_name_from_directory()
 }
 
 fn extract_repo_name_from_url(url: &str) -> Option<String> {
     let url = url.trim();
-    
+
     // Remove .git suffix if present
     let url = url.strip_suffix(".git").unwrap_or(url);
-    
+
     // Handle SSH URLs (git@github.com:user/repo)
     if url.starts_with("git@") {
-        return url.split(':').nth(1)
+        return url
+            .split(':')
+            .nth(1)
             .and_then(|path| path.split('/').next_back())
             .map(|s| s.to_string());
     }
-    
+
     // Handle HTTP(S) URLs and file paths
-    url.split('/').next_back()
+    url.split('/')
+        .next_back()
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
 }
@@ -127,31 +130,31 @@ mod tests {
             extract_repo_name_from_url("https://github.com/user/my-repo.git"),
             Some("my-repo".to_string())
         );
-        
+
         // GitHub SSH
         assert_eq!(
             extract_repo_name_from_url("git@github.com:user/my-repo.git"),
             Some("my-repo".to_string())
         );
-        
+
         // GitLab HTTPS without .git
         assert_eq!(
             extract_repo_name_from_url("https://gitlab.com/user/my-repo"),
             Some("my-repo".to_string())
         );
-        
+
         // Local path
         assert_eq!(
             extract_repo_name_from_url("/path/to/repos/my-repo.git"),
             Some("my-repo".to_string())
         );
-        
+
         // Complex repo name
         assert_eq!(
             extract_repo_name_from_url("git@github.com:xuanwo/xlaude-enable.git"),
             Some("xlaude-enable".to_string())
         );
-        
+
         // Edge cases
         assert_eq!(
             extract_repo_name_from_url("https://github.com/user/repo-with-dots.v2.git"),
