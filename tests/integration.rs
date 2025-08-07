@@ -375,8 +375,8 @@ fn test_add_without_name() {
     let state = ctx.read_state();
     let worktrees = state["worktrees"].as_object().unwrap();
     // Key format is now "repo_name/worktree_name"
-    // The repo name is detected from the worktree directory name
-    assert!(worktrees.contains_key("test-repo-auto/auto-branch"));
+    // The repo name is correctly detected from the main repository
+    assert!(worktrees.contains_key("test-repo/auto-branch"));
 }
 
 // Clean command tests
@@ -575,4 +575,108 @@ fn test_mixed_format_migration() {
 
     // Verify no data loss
     assert_eq!(worktrees.len(), 2);
+}
+
+#[test]
+fn test_open_current_worktree_already_managed() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create a worktree
+    ctx.xlaude(&["create", "feature-x"]).assert().success();
+
+    // Navigate to the worktree directory
+    let worktree_dir = ctx.temp_dir.path().join("test-repo-feature-x");
+
+    // Open from within the worktree - should open directly since it's already managed
+    ctx.xlaude_in_dir(&worktree_dir, &["open"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Opening current worktree"));
+}
+
+#[test]
+fn test_open_current_worktree_not_managed() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create a worktree manually using git
+    std::process::Command::new("git")
+        .args([
+            "worktree",
+            "add",
+            "-b",
+            "manual-branch",
+            "../test-repo-manual",
+        ])
+        .current_dir(&ctx.repo_dir)
+        .output()
+        .unwrap();
+
+    let worktree_dir = ctx.temp_dir.path().join("test-repo-manual");
+
+    // Try to open from within the unmanaged worktree
+    // In non-interactive mode, it should just print info and exit
+    ctx.xlaude_in_dir(&worktree_dir, &["open"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            "Current directory is a worktree but not managed",
+        ));
+}
+
+#[test]
+fn test_open_from_base_branch() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create a worktree for testing
+    ctx.xlaude(&["create", "feature-y"]).assert().success();
+
+    // Try to open from main branch (should fall through to normal behavior)
+    ctx.xlaude(&["open"])
+        .assert()
+        .failure() // Will fail in non-interactive mode since it needs selection
+        .stderr(predicates::str::contains(
+            "Interactive selection not available in non-interactive mode",
+        ));
+}
+
+#[test]
+fn test_open_from_main_repo_not_worktree() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create some worktrees first
+    ctx.xlaude(&["create", "feature-a"]).assert().success();
+    ctx.xlaude(&["create", "feature-b"]).assert().success();
+
+    // Try to open from the main repo (not a worktree, on main branch)
+    // Should fall through to selection mode
+    ctx.xlaude(&["open"])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "Interactive selection not available",
+        ));
+}
+
+#[test]
+fn test_open_from_non_git_directory() {
+    let temp_dir = TempDir::new().unwrap();
+    let non_git_dir = temp_dir.path().join("not-a-repo");
+    let config_dir = temp_dir.path().join(".config/xlaude");
+    fs::create_dir_all(&non_git_dir).unwrap();
+    fs::create_dir_all(&config_dir).unwrap();
+
+    // Create an empty state file
+    let state = json!({ "worktrees": {} });
+    fs::write(config_dir.join("state.json"), state.to_string()).unwrap();
+
+    // Try to open from a non-git directory with empty worktrees
+    let mut cmd = Command::cargo_bin("xlaude").unwrap();
+    cmd.current_dir(&non_git_dir)
+        .env("HOME", temp_dir.path())
+        .env("XLAUDE_CONFIG_DIR", &config_dir)
+        .env("XLAUDE_NON_INTERACTIVE", "1")
+        .arg("open")
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("No worktrees found"));
 }

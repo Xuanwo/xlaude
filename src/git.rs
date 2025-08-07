@@ -62,8 +62,30 @@ fn extract_repo_name_from_url(url: &str) -> Option<String> {
 }
 
 fn get_repo_name_from_directory() -> Result<String> {
-    let toplevel = execute_git(&["rev-parse", "--show-toplevel"])?;
-    let path = Path::new(&toplevel);
+    // For worktrees, we need to get the main repository path
+    // Try to get the common git directory first (which points to main repo for worktrees)
+    let git_common_dir = execute_git(&["rev-parse", "--git-common-dir"])?;
+    let git_dir = execute_git(&["rev-parse", "--git-dir"])?;
+
+    let repo_path = if git_common_dir != git_dir {
+        // We're in a worktree - git-common-dir points to main repo's .git
+        let path = Path::new(&git_common_dir);
+        if path.file_name().is_some_and(|n| n == ".git") {
+            // Get the parent directory which is the main repo
+            path.parent()
+                .and_then(|p| p.to_str())
+                .map(|s| s.to_string())
+                .context("Failed to get main repository path")?
+        } else {
+            // git-common-dir doesn't end with .git, use it directly
+            git_common_dir
+        }
+    } else {
+        // Not in a worktree, use toplevel
+        execute_git(&["rev-parse", "--show-toplevel"])?
+    };
+
+    let path = Path::new(&repo_path);
     path.file_name()
         .and_then(|n| n.to_str())
         .map(std::string::ToString::to_string)

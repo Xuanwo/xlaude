@@ -4,12 +4,12 @@ expression: state
 ---
 {
   "worktrees": {
-    "test-repo-manual/manual": {
+    "test-repo/manual": {
       "branch": "manual-branch",
       "created_at": "[TIMESTAMP]",
       "name": "manual",
       "path": "/tmp/TEST_DIR/test-repo-manual",
-      "repo_name": "test-repo-manual"
+      "repo_name": "test-repo"
     }
   }
 }
