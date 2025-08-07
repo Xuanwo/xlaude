@@ -88,22 +88,25 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
     // Change back to original directory
     std::env::set_current_dir(&original_dir)?;
 
-    // Remove worktree
-    println!("{} Removing worktree...", "🗑️ ".yellow());
-    execute_git(&["worktree", "remove", worktree_info.path.to_str().unwrap()])
-        .context("Failed to remove worktree")?;
-
-    // Try to delete branch
+    // Check if branch is fully merged before asking about force delete
     println!(
-        "{} Deleting branch '{}'...",
-        "🗑️ ".yellow(),
+        "{} Checking branch '{}'...",
+        "🔍".yellow(),
         worktree_info.branch
     );
 
-    // First try to delete with -d (safe delete)
-    let result = execute_git(&["branch", "-d", &worktree_info.branch]);
+    // Check if branch is fully merged by checking if it would need -D to delete
+    let output = std::process::Command::new("git")
+        .args(["branch", "--merged"])
+        .output()
+        .context("Failed to check merged branches")?;
 
-    if result.is_err() {
+    let merged_branches = String::from_utf8_lossy(&output.stdout);
+    let branch_is_merged = merged_branches
+        .lines()
+        .any(|line| line.trim().trim_start_matches('*').trim() == worktree_info.branch);
+
+    let should_force_delete = if !branch_is_merged {
         // Branch is not fully merged, ask for confirmation to force delete
         println!(
             "{} Branch '{}' is not fully merged",
@@ -111,7 +114,7 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
             worktree_info.branch.cyan()
         );
 
-        let force_delete = if std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
+        if std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
             // In non-interactive mode, don't force delete
             false
         } else {
@@ -119,17 +122,34 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
                 .with_prompt("Do you want to force delete the branch?")
                 .default(false)
                 .interact()?
-        };
-
-        if force_delete {
-            execute_git(&["branch", "-D", &worktree_info.branch])
-                .context("Failed to force delete branch")?;
-            println!("{} Branch deleted", "✅".green());
-        } else {
-            println!("{} Branch kept", "ℹ️ ".blue());
         }
     } else {
+        false
+    };
+
+    // Now remove worktree
+    println!("{} Removing worktree...", "🗑️ ".yellow());
+    execute_git(&["worktree", "remove", worktree_info.path.to_str().unwrap()])
+        .context("Failed to remove worktree")?;
+
+    // Delete branch based on earlier decision
+    println!(
+        "{} Deleting branch '{}'...",
+        "🗑️ ".yellow(),
+        worktree_info.branch
+    );
+
+    if should_force_delete {
+        execute_git(&["branch", "-D", &worktree_info.branch])
+            .context("Failed to force delete branch")?;
         println!("{} Branch deleted", "✅".green());
+    } else {
+        let result = execute_git(&["branch", "-d", &worktree_info.branch]);
+        if result.is_ok() {
+            println!("{} Branch deleted", "✅".green());
+        } else {
+            println!("{} Branch kept (not fully merged)", "ℹ️ ".blue());
+        }
     }
 
     // Update state
