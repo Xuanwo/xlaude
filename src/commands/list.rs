@@ -54,7 +54,14 @@ pub fn handle_list() -> Result<()> {
 
                 // Truncate message if too long
                 let message = if session.last_user_message.len() > 60 {
-                    format!("{}...", &session.last_user_message[..57])
+                    let mut truncated = String::new();
+                    for ch in session.last_user_message.chars() {
+                        if truncated.len() + ch.len_utf8() > 57 {
+                            break;
+                        }
+                        truncated.push(ch);
+                    }
+                    format!("{truncated}...")
                 } else {
                     session.last_user_message.clone()
                 };
