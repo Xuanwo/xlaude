@@ -15,7 +15,10 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 ### xlaude open [name]
 打开已存在的 worktree 并启动 Claude：
 - 有参数：打开指定的 worktree
-- 无参数：显示交互式选择列表
+- 无参数：
+  - 如果当前目录是 worktree（非 main/master/develop）：直接打开当前 worktree
+  - 如果当前 worktree 未被管理：询问是否添加并打开
+  - 否则：显示交互式选择列表
 - 切换到 worktree 目录
 - 启动 `claude --dangerously-skip-permissions`
 - 继承所有环境变量
@@ -25,6 +28,7 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 - 有参数：删除指定的 worktree
 - 无参数：删除当前所在的 worktree
 - 检查未提交的修改和未推送的 commit
+- 检查分支是否已完全合并，未合并时询问是否强制删除
 - 需要时进行二次确认
 - 自动删除 worktree 和本地分支（如果安全）
 
@@ -46,14 +50,24 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
   - 每个 session 显示：最后更新时间和最后的用户消息
   - 超过 3 个时显示剩余数量
 
+### xlaude clean
+清理无效的 worktree：
+- 检查所有管理的 worktree 是否仍存在于 git 中
+- 自动移除已被手动删除的 worktree
+- 适用于使用 `git worktree remove` 后的清理
+- 保持 xlaude 状态与 git 状态同步
+
 ## 技术实现
 
 - 使用 Rust 开发
 - 直接调用系统 git 命令
 - 状态持久化到 `~/.config/xlaude/state.json`
+  - Worktree key 格式：`<repo-name>/<worktree-name>`（v0.3+）
+  - 自动迁移旧版本格式到新格式
 - 使用 clap 构建 CLI
 - 使用 BIP39 词库生成随机名称
 - 彩色输出和交互式确认
+- 集成测试覆盖所有核心功能
 
 ## 使用示例
 
@@ -67,7 +81,7 @@ xlaude create  # 可能创建 ../opendal-dolphin 目录
 
 # 打开并启动 Claude
 xlaude open feature-x  # 打开指定的 worktree
-xlaude open  # 交互式选择要打开的 worktree
+xlaude open  # 如果在 worktree 中直接打开，否则交互式选择
 
 # 将已存在的 worktree 添加到管理
 cd ../opendal-bugfix
@@ -83,9 +97,16 @@ xlaude delete
 # 删除指定 worktree
 xlaude delete feature-x
 
+# 清理无效的 worktree
+xlaude clean
+
 # 典型工作流
 xlaude create my-feature  # 创建 worktree
 xlaude open my-feature   # 打开并开始工作
 # ... 工作完成后 ...
 xlaude delete my-feature # 清理 worktree
+
+# 直接在当前 worktree 中启动
+cd ../opendal-feature
+xlaude open  # 自动检测并打开当前 worktree
 ```

@@ -44,11 +44,14 @@ This creates a new git worktree at `../<repo>-<name>` and a corresponding branch
 # Open specific workspace
 xlaude open feature-auth
 
-# Interactive selection
+# Open current directory if it's a worktree
+xlaude open
+
+# Interactive selection (when not in a worktree)
 xlaude open
 ```
 
-This switches to the worktree directory and launches Claude with `--dangerously-skip-permissions`.
+This switches to the worktree directory and launches Claude with `--dangerously-skip-permissions`. When run without arguments in a worktree directory, it opens the current worktree directly.
 
 ### Add existing worktree
 
@@ -86,7 +89,8 @@ xlaude delete feature-auth
 Performs safety checks for:
 - Uncommitted changes
 - Unpushed commits
-- Confirms before deletion
+- Branch merge status
+- Confirms before deletion when needed
 
 ### Clean up invalid worktrees
 
@@ -112,16 +116,27 @@ Removes worktrees from xlaude's state that no longer exist in git. This is usefu
 3. **Switch contexts**:
    ```bash
    xlaude open  # Select another workspace
+   # Or if you're already in a worktree directory:
+   cd ../project-feature
+   xlaude open  # Opens current worktree directly
    ```
 
 4. **Clean up** when done:
    ```bash
    xlaude delete auth-system
+   # Or clean up all invalid worktrees:
+   xlaude clean
    ```
 
 ## Configuration
 
 State is persisted to `~/.config/xlaude/state.json`.
+
+### State Format
+
+- Worktree keys use format: `<repo-name>/<worktree-name>` (v0.3+)
+- Automatic migration from older formats
+- Tracks creation time and Claude session history
 
 ## Requirements
 
