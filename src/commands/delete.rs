@@ -76,8 +76,35 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
     execute_git(&["worktree", "remove", worktree_info.path.to_str().unwrap()])
         .context("Failed to remove worktree")?;
 
-    // Try to delete branch (will fail if not merged)
-    let _ = execute_git(&["branch", "-d", &worktree_info.branch]);
+    // Try to delete branch
+    println!("{} Deleting branch '{}'...", "🗑️ ".yellow(), worktree_info.branch);
+    
+    // First try to delete with -d (safe delete)
+    let result = execute_git(&["branch", "-d", &worktree_info.branch]);
+    
+    if result.is_err() {
+        // Branch is not fully merged, ask for confirmation to force delete
+        println!(
+            "{} Branch '{}' is not fully merged",
+            "⚠️ ".yellow(),
+            worktree_info.branch.cyan()
+        );
+        
+        let force_delete = Confirm::new()
+            .with_prompt("Do you want to force delete the branch?")
+            .default(false)
+            .interact()?;
+        
+        if force_delete {
+            execute_git(&["branch", "-D", &worktree_info.branch])
+                .context("Failed to force delete branch")?;
+            println!("{} Branch deleted", "✅".green());
+        } else {
+            println!("{} Branch kept", "ℹ️ ".blue());
+        }
+    } else {
+        println!("{} Branch deleted", "✅".green());
+    }
 
     // Update state
     state.worktrees.remove(&worktree_name);
