@@ -71,7 +71,7 @@ impl TestContext {
             .output()
             .unwrap();
         std::process::Command::new("git")
-            .args(["commit", "-m", "Initial commit"])
+            .args(["commit", "--no-gpg-sign", "-m", "Initial commit"])
             .current_dir(path)
             .output()
             .unwrap();

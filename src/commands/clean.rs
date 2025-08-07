@@ -1,11 +1,11 @@
 use anyhow::Result;
 use colored::Colorize;
 use std::collections::HashSet;
-use std::env;
 use std::path::PathBuf;
 
 use crate::git::list_worktrees;
 use crate::state::XlaudeState;
+use crate::utils::execute_in_dir;
 
 pub fn handle_clean() -> Result<()> {
     let mut state = XlaudeState::load()?;
@@ -63,7 +63,6 @@ pub fn handle_clean() -> Result<()> {
 
 fn collect_all_worktrees(state: &XlaudeState) -> Result<HashSet<PathBuf>> {
     let mut all_worktrees = HashSet::new();
-    let current_dir = env::current_dir()?;
 
     // Get unique repository paths
     let repo_paths: HashSet<_> = state
@@ -74,13 +73,12 @@ fn collect_all_worktrees(state: &XlaudeState) -> Result<HashSet<PathBuf>> {
 
     // Collect worktrees from each repository
     for repo_path in repo_paths {
-        if repo_path.exists() && env::set_current_dir(&repo_path).is_ok() {
-            if let Ok(worktrees) = list_worktrees() {
+        if repo_path.exists() {
+            if let Ok(worktrees) = execute_in_dir(&repo_path, list_worktrees) {
                 all_worktrees.extend(worktrees);
             }
         }
     }
 
-    env::set_current_dir(current_dir)?;
     Ok(all_worktrees)
 }
