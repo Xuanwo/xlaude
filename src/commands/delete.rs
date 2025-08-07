@@ -5,6 +5,27 @@ use dialoguer::Confirm;
 use crate::git::{execute_git, has_unpushed_commits, is_working_tree_clean};
 use crate::state::XlaudeState;
 
+fn check_branch_merged_via_pr(branch: &str) -> bool {
+    // Try to check if branch was merged via PR using gh CLI
+    let output = std::process::Command::new("gh")
+        .args([
+            "pr", "list", "--state", "merged", "--head", branch, "--json", "number",
+        ])
+        .output();
+
+    if let Ok(output) = output {
+        if output.status.success() {
+            let result = String::from_utf8_lossy(&output.stdout);
+            // If we found any merged PRs from this branch, consider it merged
+            if let Ok(prs) = serde_json::from_str::<Vec<serde_json::Value>>(&result) {
+                return !prs.is_empty();
+            }
+        }
+    }
+
+    false
+}
+
 pub fn handle_delete(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
 
@@ -98,16 +119,25 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
         worktree_info.branch
     );
 
-    // Check if branch is fully merged by checking if it would need -D to delete
+    // First try traditional git merge check
     let output = std::process::Command::new("git")
         .args(["branch", "--merged"])
         .output()
         .context("Failed to check merged branches")?;
 
     let merged_branches = String::from_utf8_lossy(&output.stdout);
-    let branch_is_merged = merged_branches
+    let branch_is_merged_git = merged_branches
         .lines()
         .any(|line| line.trim().trim_start_matches('*').trim() == worktree_info.branch);
+
+    // Always check if merged via PR (works for squash merge)
+    let branch_is_merged_pr = check_branch_merged_via_pr(&worktree_info.branch);
+
+    let branch_is_merged = branch_is_merged_git || branch_is_merged_pr;
+
+    if branch_is_merged_pr && !branch_is_merged_git {
+        println!("  {} Branch was merged via PR", "ℹ️".blue());
+    }
 
     let should_force_delete = if !branch_is_merged {
         // Branch is not fully merged, ask for confirmation to force delete
@@ -116,13 +146,14 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
             "⚠️ ".yellow(),
             worktree_info.branch.cyan()
         );
+        println!("  {} No merged PR found for this branch", "ℹ️".blue());
 
         if std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
             // In non-interactive mode, don't force delete
             false
         } else {
             Confirm::new()
-                .with_prompt("Do you want to force delete the branch?")
+                .with_prompt("Delete the branch anyway?")
                 .default(false)
                 .interact()?
         }
