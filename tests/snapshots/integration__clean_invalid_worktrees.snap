@@ -1,0 +1,7 @@
+---
+source: tests/integration.rs
+expression: "String::from_utf8_lossy(&output.get_output().stdout)"
+---
+🔍 Checking for invalid worktrees...
+  ❌ Found invalid worktree: invalid (/non/existent/path)
+✅ Removed 1 invalid worktree

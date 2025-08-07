@@ -16,7 +16,11 @@ pub fn handle_list() -> Result<()> {
     println!("{} Active worktrees:", "📋".cyan());
     println!();
 
-    for info in state.worktrees.values() {
+    // Sort worktrees by path for consistent output
+    let mut worktrees: Vec<_> = state.worktrees.values().collect();
+    worktrees.sort_by_key(|w| &w.path);
+
+    for info in worktrees {
         println!("  {} {}", "•".green(), info.name.cyan());
         println!("    {} {}", "Repository:".bright_black(), info.repo_name);
         println!("    {} {}", "Path:".bright_black(), info.path.display());

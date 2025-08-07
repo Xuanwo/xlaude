@@ -1,0 +1,5 @@
+---
+source: tests/integration.rs
+expression: "String::from_utf8_lossy(&output.get_output().stdout)"
+---
+📭 No active worktrees

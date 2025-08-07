@@ -1,0 +1,15 @@
+---
+source: tests/integration.rs
+expression: state
+---
+{
+  "worktrees": {
+    "feature-x": {
+      "branch": "feature-x",
+      "created_at": "[TIMESTAMP]",
+      "name": "feature-x",
+      "path": "/tmp/TEST_DIR/test-repo-feature-x",
+      "repo_name": "test-repo"
+    }
+  }
+}

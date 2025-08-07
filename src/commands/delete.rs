@@ -57,9 +57,26 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
             println!("{} You have unpushed commits", "⚠️ ".red());
         }
 
+        // Allow non-interactive mode for testing
+        let confirmed = if std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
+            // In non-interactive mode, don't proceed with deletion if there are changes
+            false
+        } else {
+            Confirm::new()
+                .with_prompt("Are you sure you want to delete this worktree?")
+                .default(false)
+                .interact()?
+        };
+
+        if !confirmed {
+            println!("{} Cancelled", "❌".red());
+            return Ok(());
+        }
+    } else if !std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
+        // Only ask for confirmation if not in non-interactive mode
         let confirmed = Confirm::new()
-            .with_prompt("Are you sure you want to delete this worktree?")
-            .default(false)
+            .with_prompt(format!("Delete worktree '{}'?", worktree_name))
+            .default(true)
             .interact()?;
 
         if !confirmed {
@@ -94,10 +111,15 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
             worktree_info.branch.cyan()
         );
 
-        let force_delete = Confirm::new()
-            .with_prompt("Do you want to force delete the branch?")
-            .default(false)
-            .interact()?;
+        let force_delete = if std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
+            // In non-interactive mode, don't force delete
+            false
+        } else {
+            Confirm::new()
+                .with_prompt("Do you want to force delete the branch?")
+                .default(false)
+                .interact()?
+        };
 
         if force_delete {
             execute_git(&["branch", "-D", &worktree_info.branch])

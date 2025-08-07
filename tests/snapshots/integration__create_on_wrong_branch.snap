@@ -1,0 +1,5 @@
+---
+source: tests/integration.rs
+expression: "String::from_utf8_lossy(&output.get_output().stderr)"
+---
+Error: Must be on a base branch (main, master, or develop) to create a new worktree

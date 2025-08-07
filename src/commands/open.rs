@@ -43,8 +43,14 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
     // Change to worktree directory and launch Claude
     std::env::set_current_dir(&worktree_info.path).context("Failed to change directory")?;
 
-    let mut cmd = Command::new("claude");
-    cmd.arg("--dangerously-skip-permissions");
+    // Allow overriding claude command for testing
+    let claude_cmd = std::env::var("XLAUDE_CLAUDE_CMD").unwrap_or_else(|_| "claude".to_string());
+    let mut cmd = Command::new(&claude_cmd);
+    
+    // Only add the flag if we're using the real claude command
+    if claude_cmd == "claude" {
+        cmd.arg("--dangerously-skip-permissions");
+    }
 
     // Inherit all environment variables
     cmd.envs(std::env::vars());

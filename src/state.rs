@@ -43,6 +43,11 @@ impl XlaudeState {
 }
 
 fn get_config_path() -> Result<PathBuf> {
+    // Allow overriding config directory for testing
+    if let Ok(config_dir) = std::env::var("XLAUDE_CONFIG_DIR") {
+        return Ok(PathBuf::from(config_dir).join("state.json"));
+    }
+    
     let proj_dirs = ProjectDirs::from("com", "xuanwo", "xlaude")
         .context("Failed to determine config directory")?;
     Ok(proj_dirs.config_dir().join("state.json"))
