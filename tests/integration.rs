@@ -8,7 +8,7 @@ use tempfile::TempDir;
 
 struct TestContext {
     temp_dir: TempDir,
-    temp_dir_str: String,  // Store temp dir path as string for easy replacement
+    temp_dir_str: String, // Store temp dir path as string for easy replacement
     repo_dir: PathBuf,
     config_dir: PathBuf,
 }
@@ -17,7 +17,9 @@ impl TestContext {
     fn new(repo_name: &str) -> Self {
         let temp_dir = TempDir::new().unwrap();
         // Get the canonical path to handle symlinks and /private prefix on macOS
-        let temp_dir_str = temp_dir.path().canonicalize()
+        let temp_dir_str = temp_dir
+            .path()
+            .canonicalize()
             .unwrap_or_else(|_| temp_dir.path().to_path_buf())
             .to_string_lossy()
             .to_string();
@@ -43,20 +45,20 @@ impl TestContext {
 
         // Initialize git repository
         std::process::Command::new("git")
-            .args(&["init"])
+            .args(["init"])
             .current_dir(path)
             .output()
             .unwrap();
 
         // Configure git user for tests
         std::process::Command::new("git")
-            .args(&["config", "user.email", "test@example.com"])
+            .args(["config", "user.email", "test@example.com"])
             .current_dir(path)
             .output()
             .unwrap();
 
         std::process::Command::new("git")
-            .args(&["config", "user.name", "Test User"])
+            .args(["config", "user.name", "Test User"])
             .current_dir(path)
             .output()
             .unwrap();
@@ -64,12 +66,12 @@ impl TestContext {
         // Create initial commit
         fs::write(path.join("README.md"), "# Test Repo").unwrap();
         std::process::Command::new("git")
-            .args(&["add", "."])
+            .args(["add", "."])
             .current_dir(path)
             .output()
             .unwrap();
         std::process::Command::new("git")
-            .args(&["commit", "-m", "Initial commit"])
+            .args(["commit", "-m", "Initial commit"])
             .current_dir(path)
             .output()
             .unwrap();
@@ -122,7 +124,7 @@ impl TestContext {
     fn worktree_exists(&self, name: &str) -> bool {
         self.temp_dir
             .path()
-            .join(format!("test-repo-{}", name))
+            .join(format!("test-repo-{name}"))
             .exists()
     }
 
@@ -134,11 +136,11 @@ impl TestContext {
     fn redact_output(&self, text: &str) -> String {
         // Redact both paths and timestamps
         let mut result = self.redact_paths(text);
-        
+
         // Replace timestamps like "2024-01-01 12:34:56" with "[TIMESTAMP]"
         let re = Regex::new(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}").unwrap();
         result = re.replace_all(&result, "[TIMESTAMP]").to_string();
-        
+
         result
     }
 }
@@ -197,7 +199,7 @@ fn test_create_on_wrong_branch() {
 
     // Switch to non-main branch
     std::process::Command::new("git")
-        .args(&["checkout", "-b", "feature-branch"])
+        .args(["checkout", "-b", "feature-branch"])
         .current_dir(&ctx.repo_dir)
         .output()
         .unwrap();
@@ -246,10 +248,7 @@ fn test_delete_clean_worktree() {
     ctx.xlaude(&["create", "to-delete"]).assert().success();
 
     // Delete worktree (in non-interactive mode, clean worktree will be deleted automatically)
-    let output = ctx
-        .xlaude(&["delete", "to-delete"])
-        .assert()
-        .success();
+    let output = ctx.xlaude(&["delete", "to-delete"]).assert().success();
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     let redacted = ctx.redact_paths(&stdout);
@@ -275,10 +274,7 @@ fn test_delete_with_changes() {
     fs::write(worktree_path.join("new-file.txt"), "content").unwrap();
 
     // Try to delete, in non-interactive mode it will be cancelled automatically
-    let output = ctx
-        .xlaude(&["delete", "with-changes"])
-        .assert()
-        .success();
+    let output = ctx.xlaude(&["delete", "with-changes"]).assert().success();
 
     // Check that output mentions uncommitted changes and cancellation
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
@@ -317,7 +313,7 @@ fn test_add_existing_worktree() {
 
     // Manually create worktree
     std::process::Command::new("git")
-        .args(&[
+        .args([
             "worktree",
             "add",
             "../test-repo-manual",
@@ -359,13 +355,7 @@ fn test_add_without_name() {
 
     // Manually create worktree
     std::process::Command::new("git")
-        .args(&[
-            "worktree",
-            "add",
-            "../test-repo-auto",
-            "-b",
-            "auto-branch",
-        ])
+        .args(["worktree", "add", "../test-repo-auto", "-b", "auto-branch"])
         .current_dir(&ctx.repo_dir)
         .output()
         .unwrap();
@@ -395,17 +385,17 @@ fn test_clean_invalid_worktrees() {
     // Create a valid worktree
     ctx.xlaude(&["create", "valid"]).assert().success();
 
-    // Manually corrupt state file by adding invalid worktree  
-    let mut state = ctx.read_state();
+    // Manually corrupt state file by adding invalid worktree
+    let state = ctx.read_state();
     // Convert to proper structure for xlaude state format
     let worktrees_obj = state["worktrees"].as_object().cloned().unwrap_or_default();
     let mut new_worktrees = serde_json::Map::new();
-    
+
     // Copy existing worktrees
     for (k, v) in worktrees_obj {
         new_worktrees.insert(k, v);
     }
-    
+
     // Add invalid worktree
     new_worktrees.insert(
         "invalid".to_string(),
@@ -415,9 +405,9 @@ fn test_clean_invalid_worktrees() {
             "repo_name": "test-repo",
             "path": "/non/existent/path",
             "created_at": "2024-01-01T00:00:00Z"
-        })
+        }),
     );
-    
+
     let mut new_state = serde_json::Map::new();
     new_state.insert("worktrees".to_string(), json!(new_worktrees));
     ctx.write_state(&json!(new_state));
@@ -448,7 +438,9 @@ fn test_clean_with_no_invalid() {
     let output = ctx.xlaude(&["clean"]).assert().success();
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
-    assert!(stdout.contains("No invalid worktrees found") || stdout.contains("All worktrees are valid"));
+    assert!(
+        stdout.contains("No invalid worktrees found") || stdout.contains("All worktrees are valid")
+    );
 }
 
 // Open command tests (basic, since we can't actually launch Claude)
@@ -462,7 +454,7 @@ fn test_open_specific_worktree() {
     // Mock claude command to verify it would be called
     let output = ctx
         .xlaude(&["open", "to-open"])
-        .env("XLAUDE_CLAUDE_CMD", "true")  // Use 'true' command which always succeeds
+        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
         .assert()
         .success();
 

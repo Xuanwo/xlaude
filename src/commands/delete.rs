@@ -72,10 +72,10 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
             println!("{} Cancelled", "❌".red());
             return Ok(());
         }
-    } else if !std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
+    } else if std::env::var("XLAUDE_NON_INTERACTIVE").is_err() {
         // Only ask for confirmation if not in non-interactive mode
         let confirmed = Confirm::new()
-            .with_prompt(format!("Delete worktree '{}'?", worktree_name))
+            .with_prompt(format!("Delete worktree '{worktree_name}'?"))
             .default(true)
             .interact()?;
 

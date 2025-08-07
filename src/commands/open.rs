@@ -46,7 +46,7 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
     // Allow overriding claude command for testing
     let claude_cmd = std::env::var("XLAUDE_CLAUDE_CMD").unwrap_or_else(|_| "claude".to_string());
     let mut cmd = Command::new(&claude_cmd);
-    
+
     // Only add the flag if we're using the real claude command
     if claude_cmd == "claude" {
         cmd.arg("--dangerously-skip-permissions");
