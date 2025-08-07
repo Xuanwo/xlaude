@@ -4,12 +4,10 @@ expression: redacted_stdout
 ---
 📋 Active worktrees:
 
-  • feature-a
-    Repository: test-repo
-    Path: /tmp/TEST_DIR/test-repo-feature-a
-    Created: [TIMESTAMP]
-
-  • feature-b
-    Repository: test-repo
-    Path: /tmp/TEST_DIR/test-repo-feature-b
-    Created: [TIMESTAMP]
+  📦 test-repo
+    • feature-a
+      Path: /tmp/TEST_DIR/test-repo-feature-a
+      Created: [TIMESTAMP]
+    • feature-b
+      Path: /tmp/TEST_DIR/test-repo-feature-b
+      Created: [TIMESTAMP]

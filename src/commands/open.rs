@@ -13,30 +13,40 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
     }
 
     // Determine which worktree to open
-    let worktree_name = if let Some(n) = name {
-        // Verify the worktree exists
-        if !state.worktrees.contains_key(&n) {
-            anyhow::bail!("Worktree '{}' not found", n);
-        }
-        n
+    let (_key, worktree_info) = if let Some(n) = name {
+        // Find worktree by name across all projects
+        state
+            .worktrees
+            .iter()
+            .find(|(_, w)| w.name == n)
+            .map(|(k, w)| (k.clone(), w.clone()))
+            .context(format!("Worktree '{n}' not found"))?
     } else {
-        // Interactive selection
-        let names: Vec<&String> = state.worktrees.keys().collect();
+        // Interactive selection - show repo/name format
+        let mut display_names: Vec<String> = Vec::new();
+        let mut keys: Vec<String> = Vec::new();
+
+        for (key, info) in &state.worktrees {
+            display_names.push(format!("{}/{}", info.repo_name, info.name));
+            keys.push(key.clone());
+        }
+
         let selection = Select::new()
             .with_prompt("Select a worktree to open")
-            .items(&names)
+            .items(&display_names)
             .interact()?;
-        names[selection].clone()
+
+        let selected_key = keys[selection].clone();
+        let selected_info = state.worktrees.get(&selected_key).unwrap().clone();
+        (selected_key, selected_info)
     };
 
-    let worktree_info = state
-        .worktrees
-        .get(&worktree_name)
-        .context("Worktree not found")?;
+    let worktree_name = &worktree_info.name;
 
     println!(
-        "{} Opening worktree '{}'...",
+        "{} Opening worktree '{}/{}'...",
         "🚀".green(),
+        worktree_info.repo_name,
         worktree_name.cyan()
     );
 

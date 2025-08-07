@@ -9,8 +9,14 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
 
     // Determine which worktree to delete
-    let worktree_name = if let Some(n) = name {
-        n
+    let (key, worktree_info) = if let Some(n) = name {
+        // Find worktree by name across all projects
+        state
+            .worktrees
+            .iter()
+            .find(|(_, w)| w.name == n)
+            .map(|(k, w)| (k.clone(), w.clone()))
+            .context(format!("Worktree '{n}' not found"))?
     } else {
         // Get current directory name to find current worktree
         let current_dir = std::env::current_dir()?;
@@ -22,21 +28,18 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
         // Find matching worktree
         state
             .worktrees
-            .values()
-            .find(|w| w.path.file_name().and_then(|n| n.to_str()) == Some(dir_name))
-            .map(|w| w.name.clone())
+            .iter()
+            .find(|(_, w)| w.path.file_name().and_then(|n| n.to_str()) == Some(dir_name))
+            .map(|(k, w)| (k.clone(), w.clone()))
             .context("Current directory is not a managed worktree")?
     };
 
-    let worktree_info = state
-        .worktrees
-        .get(&worktree_name)
-        .context("Worktree not found")?;
+    let worktree_name = worktree_info.name.clone();
 
     println!(
         "{} Checking worktree '{}'...",
         "🔍".yellow(),
-        worktree_name.cyan()
+        worktree_name.clone().cyan()
     );
 
     // Change to worktree directory to check status
@@ -133,7 +136,7 @@ pub fn handle_delete(name: Option<String>) -> Result<()> {
     }
 
     // Update state
-    state.worktrees.remove(&worktree_name);
+    state.worktrees.remove(&key);
     state.save()?;
 
     println!(

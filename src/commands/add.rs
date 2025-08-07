@@ -25,8 +25,13 @@ pub fn handle_add(name: Option<String>) -> Result<()> {
 
     // Check if already managed
     let mut state = XlaudeState::load()?;
-    if state.worktrees.contains_key(&worktree_name) {
-        anyhow::bail!("Worktree '{}' is already managed by xlaude", worktree_name);
+    let key = XlaudeState::make_key(&repo_name, &worktree_name);
+    if state.worktrees.contains_key(&key) {
+        anyhow::bail!(
+            "Worktree '{}/{}' is already managed by xlaude",
+            repo_name,
+            worktree_name
+        );
     }
 
     println!(
@@ -37,7 +42,7 @@ pub fn handle_add(name: Option<String>) -> Result<()> {
 
     // Add to state
     state.worktrees.insert(
-        worktree_name.clone(),
+        key,
         WorktreeInfo {
             name: worktree_name.clone(),
             branch: current_branch,

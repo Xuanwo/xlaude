@@ -374,7 +374,9 @@ fn test_add_without_name() {
     // Verify it was added with branch name
     let state = ctx.read_state();
     let worktrees = state["worktrees"].as_object().unwrap();
-    assert!(worktrees.contains_key("auto-branch"));
+    // Key format is now "repo_name/worktree_name"
+    // The repo name is detected from the worktree directory name
+    assert!(worktrees.contains_key("test-repo-auto/auto-branch"));
 }
 
 // Clean command tests
@@ -396,9 +398,9 @@ fn test_clean_invalid_worktrees() {
         new_worktrees.insert(k, v);
     }
 
-    // Add invalid worktree
+    // Add invalid worktree with new key format
     new_worktrees.insert(
-        "invalid".to_string(),
+        "test-repo/invalid".to_string(),
         json!({
             "name": "invalid",
             "branch": "invalid",
@@ -423,7 +425,8 @@ fn test_clean_invalid_worktrees() {
     let cleaned_state = ctx.read_state();
     let worktrees = cleaned_state["worktrees"].as_object().unwrap();
     assert_eq!(worktrees.len(), 1);
-    assert!(worktrees.contains_key("valid"));
+    // Key format is now "repo_name/worktree_name"
+    assert!(worktrees.contains_key("test-repo/valid"));
 }
 
 #[test]
@@ -470,4 +473,106 @@ fn test_open_nonexistent_worktree() {
 
     let stderr = String::from_utf8_lossy(&output.get_output().stderr);
     assert!(stderr.contains("not found") || stderr.contains("No worktree"));
+}
+
+// Migration test
+#[test]
+fn test_v02_to_v03_migration() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create old format state file (v0.2 format with keys as just worktree names)
+    let old_state = json!({
+        "worktrees": {
+            "feature-old": {
+                "name": "feature-old",
+                "branch": "feature-old",
+                "repo_name": "test-repo",
+                "path": ctx.temp_dir.path().join("test-repo-feature-old"),
+                "created_at": "2024-01-01T00:00:00Z"
+            },
+            "bugfix": {
+                "name": "bugfix",
+                "branch": "bugfix-branch",
+                "repo_name": "another-repo",
+                "path": ctx.temp_dir.path().join("another-repo-bugfix"),
+                "created_at": "2024-01-02T00:00:00Z"
+            }
+        }
+    });
+
+    // Write old format state
+    ctx.write_state(&old_state);
+
+    // Run any xlaude command that loads state (list is simplest)
+    let output = ctx.xlaude(&["list"]).assert().success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+
+    // Check migration message was shown
+    let stderr = String::from_utf8_lossy(&output.get_output().stderr);
+    assert!(
+        stderr.contains("Migrating xlaude state")
+            || stdout.contains("another-repo")
+            || stdout.contains("test-repo")
+    );
+
+    // Read the migrated state
+    let migrated_state = ctx.read_state();
+    let worktrees = migrated_state["worktrees"].as_object().unwrap();
+
+    // Verify new key format
+    assert!(worktrees.contains_key("test-repo/feature-old"));
+    assert!(worktrees.contains_key("another-repo/bugfix"));
+
+    // Verify old keys are gone
+    assert!(!worktrees.contains_key("feature-old"));
+    assert!(!worktrees.contains_key("bugfix"));
+
+    // Verify data integrity
+    assert_eq!(worktrees["test-repo/feature-old"]["name"], "feature-old");
+    assert_eq!(worktrees["another-repo/bugfix"]["name"], "bugfix");
+}
+
+#[test]
+fn test_mixed_format_migration() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create mixed format state file (some old, some new)
+    let mixed_state = json!({
+        "worktrees": {
+            "old-style": {
+                "name": "old-style",
+                "branch": "old-branch",
+                "repo_name": "repo-a",
+                "path": ctx.temp_dir.path().join("repo-a-old-style"),
+                "created_at": "2024-01-01T00:00:00Z"
+            },
+            "repo-b/new-style": {
+                "name": "new-style",
+                "branch": "new-branch",
+                "repo_name": "repo-b",
+                "path": ctx.temp_dir.path().join("repo-b-new-style"),
+                "created_at": "2024-01-02T00:00:00Z"
+            }
+        }
+    });
+
+    // Write mixed format state
+    ctx.write_state(&mixed_state);
+
+    // Run any xlaude command that loads state
+    ctx.xlaude(&["list"]).assert().success();
+
+    // Read the migrated state
+    let migrated_state = ctx.read_state();
+    let worktrees = migrated_state["worktrees"].as_object().unwrap();
+
+    // Verify both entries are in new format
+    assert!(worktrees.contains_key("repo-a/old-style"));
+    assert!(worktrees.contains_key("repo-b/new-style"));
+
+    // Verify old key is gone
+    assert!(!worktrees.contains_key("old-style"));
+
+    // Verify no data loss
+    assert_eq!(worktrees.len(), 2);
 }

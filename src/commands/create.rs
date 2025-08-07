@@ -55,8 +55,9 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
 
     // Save state
     let mut state = XlaudeState::load()?;
+    let key = XlaudeState::make_key(&repo_name, &worktree_name);
     state.worktrees.insert(
-        worktree_name.clone(),
+        key,
         WorktreeInfo {
             name: worktree_name.clone(),
             branch: worktree_name.clone(),

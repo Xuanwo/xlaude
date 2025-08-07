@@ -4,7 +4,7 @@ expression: state
 ---
 {
   "worktrees": {
-    "feature-x": {
+    "test-repo/feature-x": {
       "branch": "feature-x",
       "created_at": "[TIMESTAMP]",
       "name": "feature-x",
