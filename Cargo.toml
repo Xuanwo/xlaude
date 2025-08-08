@@ -1,6 +1,6 @@
 [package]
 name = "xlaude"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 description = "A CLI tool for managing Claude instances with git worktree"
 license = "Apache-2.0"
