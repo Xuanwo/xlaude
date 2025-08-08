@@ -73,10 +73,10 @@ fn collect_all_worktrees(state: &XlaudeState) -> Result<HashSet<PathBuf>> {
 
     // Collect worktrees from each repository
     for repo_path in repo_paths {
-        if repo_path.exists() {
-            if let Ok(worktrees) = execute_in_dir(&repo_path, list_worktrees) {
-                all_worktrees.extend(worktrees);
-            }
+        if repo_path.exists()
+            && let Ok(worktrees) = execute_in_dir(&repo_path, list_worktrees)
+        {
+            all_worktrees.extend(worktrees);
         }
     }
 
