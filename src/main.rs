@@ -7,7 +7,9 @@ mod git;
 mod state;
 mod utils;
 
-use commands::{handle_add, handle_clean, handle_create, handle_delete, handle_list, handle_open};
+use commands::{
+    handle_add, handle_clean, handle_create, handle_delete, handle_list, handle_open, handle_rename,
+};
 
 #[derive(Parser)]
 #[command(name = "xlaude")]
@@ -39,6 +41,13 @@ enum Commands {
         /// Name for the worktree (defaults to current branch name)
         name: Option<String>,
     },
+    /// Rename a worktree
+    Rename {
+        /// Current name of the worktree
+        old_name: String,
+        /// New name for the worktree
+        new_name: String,
+    },
     /// List all active Claude instances
     List,
     /// Clean up invalid worktrees from state
@@ -53,6 +62,7 @@ fn main() -> Result<()> {
         Commands::Open { name } => handle_open(name),
         Commands::Delete { name } => handle_delete(name),
         Commands::Add { name } => handle_add(name),
+        Commands::Rename { old_name, new_name } => handle_rename(old_name, new_name),
         Commands::List => handle_list(),
         Commands::Clean => handle_clean(),
     }

@@ -98,10 +98,15 @@ Performs safety checks for:
 xlaude clean
 ```
 
-Removes worktrees from xlaude's state that no longer exist in git. This is useful when:
-- You've used `git worktree remove` directly
-- Worktree directories were manually deleted
-- Maintaining consistency between git and xlaude state
+Removes worktrees from state management that have been manually deleted using `git worktree remove`.
+
+### Rename a worktree
+
+```bash
+xlaude rename <old_name> <new_name>
+```
+
+Renames a worktree in xlaude management. This only updates the xlaude state and doesn't affect the actual git worktree or directory.
 
 ## Typical Workflow
 

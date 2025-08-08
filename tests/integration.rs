@@ -680,3 +680,39 @@ fn test_open_from_non_git_directory() {
         .failure()
         .stderr(predicates::str::contains("No worktrees found"));
 }
+
+#[test]
+fn test_rename_command() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create a worktree first
+    ctx.xlaude(&["create", "old-name"]).assert().success();
+
+    // Rename the worktree
+    ctx.xlaude(&["rename", "old-name", "new-name"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Renamed worktree"))
+        .stdout(predicates::str::contains("old-name"))
+        .stdout(predicates::str::contains("new-name"));
+
+    // Verify the rename in the list
+    ctx.xlaude(&["list"])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("• new-name")); // Check that the name is updated in the list
+
+    // Try to rename non-existent worktree
+    ctx.xlaude(&["rename", "non-existent", "some-name"])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("not found"));
+
+    // Try to rename to existing name
+    ctx.xlaude(&["create", "another-name"]).assert().success();
+
+    ctx.xlaude(&["rename", "new-name", "another-name"])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("already exists"));
+}

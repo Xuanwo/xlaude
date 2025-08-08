@@ -57,6 +57,13 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 - 适用于使用 `git worktree remove` 后的清理
 - 保持 xlaude 状态与 git 状态同步
 
+### xlaude rename <old_name> <new_name>
+重命名 worktree 状态：
+- 重命名 xlaude 管理中的 worktree 名称
+- 仅更新 xlaude 状态，不影响实际的 git worktree 或目录
+- 检查新名称是否已存在，避免冲突
+- 保留所有 Claude sessions 和元数据
+
 ## 技术实现
 
 - 使用 Rust 开发
@@ -99,6 +106,9 @@ xlaude delete feature-x
 
 # 清理无效的 worktree
 xlaude clean
+
+# 重命名 worktree
+xlaude rename feature-x feature-improved
 
 # 典型工作流
 xlaude create my-feature  # 创建 worktree

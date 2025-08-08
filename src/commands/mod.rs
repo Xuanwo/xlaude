@@ -4,6 +4,7 @@ pub mod create;
 pub mod delete;
 pub mod list;
 pub mod open;
+pub mod rename;
 
 pub use add::handle_add;
 pub use clean::handle_clean;
@@ -11,3 +12,4 @@ pub use create::handle_create;
 pub use delete::handle_delete;
 pub use list::handle_list;
 pub use open::handle_open;
+pub use rename::handle_rename;
