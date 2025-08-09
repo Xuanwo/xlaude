@@ -68,7 +68,10 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 
 - 使用 Rust 开发
 - 直接调用系统 git 命令
-- 状态持久化到 `~/.config/xlaude/state.json`
+- 状态持久化位置：
+  - macOS: `~/Library/Application Support/com.xuanwo.xlaude/state.json`
+  - Linux: `~/.config/xlaude/state.json`
+  - Windows: `%APPDATA%\xuanwo\xlaude\config\state.json`
   - Worktree key 格式：`<repo-name>/<worktree-name>`（v0.3+）
   - 自动迁移旧版本格式到新格式
 - 使用 clap 构建 CLI

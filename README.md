@@ -135,7 +135,10 @@ Renames a worktree in xlaude management. This only updates the xlaude state and 
 
 ## Configuration
 
-State is persisted to `~/.config/xlaude/state.json`.
+State is persisted to platform-specific locations:
+- macOS: `~/Library/Application Support/com.xuanwo.xlaude/state.json`
+- Linux: `~/.config/xlaude/state.json`
+- Windows: `%APPDATA%\xuanwo\xlaude\config\state.json`
 
 ### State Format
 
