@@ -296,15 +296,23 @@ fn perform_deletion(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Re
 fn remove_worktree(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Result<()> {
     if config.worktree_exists {
         println!("{} Removing worktree...", "🗑️ ".yellow());
-        
+
         // First attempt: try normal removal
         let result = execute_git(&["worktree", "remove", worktree_info.path.to_str().unwrap()]);
-        
+
         // If failed, might be due to submodules - try with force flag
         if result.is_err() {
-            println!("{} Standard removal failed, trying force removal...", "⚠️ ".yellow());
-            execute_git(&["worktree", "remove", "--force", worktree_info.path.to_str().unwrap()])
-                .context("Failed to force remove worktree")?;
+            println!(
+                "{} Standard removal failed, trying force removal...",
+                "⚠️ ".yellow()
+            );
+            execute_git(&[
+                "worktree",
+                "remove",
+                "--force",
+                worktree_info.path.to_str().unwrap(),
+            ])
+            .context("Failed to force remove worktree")?;
         }
     } else {
         println!("{} Pruning non-existent worktree...", "🗑️ ".yellow());
