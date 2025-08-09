@@ -2,6 +2,10 @@
 
 A CLI tool for managing Claude instances with git worktree for parallel development workflows.
 
+## A Personal Tool, Made for You to Customize
+
+This project is designed as a personal workflow tool, tailored to my specific development needs. While you're welcome to use it as-is, I won't be merging features that I don't personally use. Instead, I encourage you to **fork this project** and make it your own! Feel free to customize it to perfectly fit your workflow, that's the beauty of open source. Your fork might even become the perfect solution for others with similar needs.
+
 ## Features
 
 - **Create isolated workspaces**: Each Claude instance runs in its own git worktree
