@@ -1,6 +1,6 @@
 [package]
 name = "xlaude"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 description = "A CLI tool for managing Claude instances with git worktree"
 license = "Apache-2.0"
@@ -11,7 +11,7 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
 colored = "3.0.0"
 dialoguer = "0.11.0"
-directories = "5.0.1"
+directories = "6"
 chrono = { version = "0.4.41", features = ["serde"] }
 rand = "0.8.5"
 bip39 = "2.1.0"

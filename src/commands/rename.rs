@@ -41,7 +41,7 @@ pub fn handle_rename(old_name: String, new_name: String) -> Result<()> {
         old_name.cyan(),
         "to".green(),
         new_name.cyan(),
-        format!("in repository '{}'", repo).dimmed()
+        format!("in repository '{repo}'").dimmed()
     );
 
     Ok(())
