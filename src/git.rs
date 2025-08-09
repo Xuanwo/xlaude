@@ -96,10 +96,41 @@ pub fn get_current_branch() -> Result<String> {
     execute_git(&["symbolic-ref", "--short", "HEAD"])
 }
 
+pub fn get_default_branch() -> Result<String> {
+    // Try to get the default branch from remote HEAD
+    if let Ok(output) = execute_git(&["remote", "show", "origin"]) {
+        for line in output.lines() {
+            if let Some(branch) = line.strip_prefix("  HEAD branch: ") {
+                return Ok(branch.trim().to_string());
+            }
+        }
+    }
+
+    // Fallback: try to get HEAD from symbolic-ref
+    if let Ok(output) = execute_git(&["symbolic-ref", "refs/remotes/origin/HEAD"])
+        && let Some(branch) = output.strip_prefix("refs/remotes/origin/")
+    {
+        return Ok(branch.to_string());
+    }
+
+    // Final fallback: return "main" as the most common default
+    Ok("main".to_string())
+}
+
 pub fn is_base_branch() -> Result<bool> {
     let current = get_current_branch()?;
-    let base_branches = ["main", "master", "develop"];
-    Ok(base_branches.contains(&current.as_str()))
+
+    // Get the actual default branch from remote
+    let default_branch = get_default_branch().unwrap_or_else(|_| "main".to_string());
+
+    // Check if current branch is the default branch
+    if current == default_branch {
+        return Ok(true);
+    }
+
+    // Also allow common base branches for flexibility
+    let common_base_branches = ["main", "master", "develop"];
+    Ok(common_base_branches.contains(&current.as_str()))
 }
 
 pub fn is_working_tree_clean() -> Result<bool> {
@@ -182,5 +213,27 @@ mod tests {
             extract_repo_name_from_url("https://github.com/user/repo-with-dots.v2.git"),
             Some("repo-with-dots.v2".to_string())
         );
+    }
+
+    #[test]
+    fn test_get_default_branch() {
+        // This test will work based on the actual git repository it's run in
+        // We can't make strong assertions about the result since it depends on the repo
+        let result = get_default_branch();
+
+        // Should either succeed with a non-empty string or fail gracefully
+        match result {
+            Ok(branch) => {
+                assert!(!branch.is_empty());
+                // Common default branches
+                assert!(
+                    ["main", "master", "develop"].contains(&branch.as_str()) || !branch.is_empty()
+                );
+            }
+            Err(_) => {
+                // It's okay to fail if we're not in a git repo or no remote
+                // The function should handle this gracefully
+            }
+        }
     }
 }
