@@ -743,10 +743,31 @@ fn test_create_with_submodules() {
     // Create a worktree
     let output = ctx.xlaude(&["create", "with-submodule"]).assert().success();
 
-    // Check that the output mentions submodules
+    // Snapshot test output with path redaction
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
-    assert!(
-        stdout.contains("Updated submodules")
-            || stdout.contains("Warning: Failed to update submodules")
-    );
+    let redacted = ctx.redact_paths(&stdout);
+    assert_snapshot!(redacted);
+
+    // Verify worktree was created
+    assert!(ctx.worktree_exists("with-submodule"));
+}
+
+#[test]
+fn test_create_without_submodules() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create a worktree in a repo without submodules
+    let output = ctx.xlaude(&["create", "no-submodule"]).assert().success();
+
+    // Snapshot test output with path redaction
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_paths(&stdout);
+    assert_snapshot!(redacted);
+
+    // Verify worktree was created
+    assert!(ctx.worktree_exists("no-submodule"));
+
+    // Ensure no submodule update message appears
+    assert!(!stdout.contains("Updated submodules"));
+    assert!(!stdout.contains("Warning: Failed to update submodules"));
 }
