@@ -172,6 +172,38 @@ pub fn list_worktrees() -> Result<Vec<PathBuf>> {
     Ok(worktrees)
 }
 
+pub fn execute_git_in_dir(dir: &Path, args: &[&str]) -> Result<String> {
+    let output = Command::new("git")
+        .current_dir(dir)
+        .args(args)
+        .output()
+        .context("Failed to execute git command")?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Git command failed: {}", stderr);
+    }
+}
+
+pub fn update_submodules(worktree_path: &Path) -> Result<()> {
+    // Check if submodules exist
+    let gitmodules = worktree_path.join(".gitmodules");
+    if !gitmodules.exists() {
+        return Ok(());
+    }
+
+    // Initialize and update submodules
+    execute_git_in_dir(
+        worktree_path,
+        &["submodule", "update", "--init", "--recursive"],
+    )
+    .context("Failed to update submodules")?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

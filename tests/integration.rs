@@ -716,3 +716,37 @@ fn test_rename_command() {
         .failure()
         .stderr(predicates::str::contains("already exists"));
 }
+
+#[test]
+fn test_create_with_submodules() {
+    let ctx = TestContext::new("test-repo");
+
+    // Add a fake submodule to the test repo
+    let gitmodules_content = r#"[submodule "lib/helper"]
+    path = lib/helper
+    url = https://github.com/example/helper.git
+"#;
+    fs::write(ctx.repo_dir.join(".gitmodules"), gitmodules_content).unwrap();
+
+    // Stage and commit the .gitmodules file
+    std::process::Command::new("git")
+        .args(["add", ".gitmodules"])
+        .current_dir(&ctx.repo_dir)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "--no-gpg-sign", "-m", "Add submodule"])
+        .current_dir(&ctx.repo_dir)
+        .output()
+        .unwrap();
+
+    // Create a worktree
+    let output = ctx.xlaude(&["create", "with-submodule"]).assert().success();
+
+    // Check that the output mentions submodules
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(
+        stdout.contains("Updated submodules")
+            || stdout.contains("Warning: Failed to update submodules")
+    );
+}

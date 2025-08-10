@@ -4,7 +4,7 @@ use colored::Colorize;
 use std::fs;
 use std::path::Path;
 
-use crate::git::{execute_git, get_repo_name, is_base_branch};
+use crate::git::{execute_git, get_repo_name, is_base_branch, update_submodules};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::generate_random_name;
 
@@ -44,6 +44,21 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
         .parent()
         .unwrap()
         .join(format!("{repo_name}-{worktree_name}"));
+
+    // Update submodules if they exist
+    if let Err(e) = update_submodules(&worktree_path) {
+        println!(
+            "{} Warning: Failed to update submodules: {}",
+            "⚠️".yellow(),
+            e
+        );
+    } else {
+        // Check if submodules were actually updated
+        let gitmodules = worktree_path.join(".gitmodules");
+        if gitmodules.exists() {
+            println!("{} Updated submodules", "📦".green());
+        }
+    }
 
     // Copy CLAUDE.local.md if it exists
     let claude_local_md = Path::new("CLAUDE.local.md");
