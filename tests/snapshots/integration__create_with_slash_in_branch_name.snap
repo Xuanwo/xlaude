@@ -1,0 +1,7 @@
+---
+source: tests/integration.rs
+expression: redacted
+---
+✨ Creating worktree 'fix-bug' with branch 'fix/bug'...
+✅ Worktree created at: /tmp/TEST_DIR/test-repo-fix-bug
+  💡 To open it, run: xlaude open fix-bug

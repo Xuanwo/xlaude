@@ -33,6 +33,12 @@ pub fn generate_random_name() -> Result<String> {
         .context("Failed to generate random name")
 }
 
+/// Sanitize a branch name for use in directory names
+/// Replaces forward slashes with hyphens to avoid creating subdirectories
+pub fn sanitize_branch_name(branch: &str) -> String {
+    branch.replace('/', "-")
+}
+
 pub fn execute_in_dir<P, F, R>(path: P, f: F) -> Result<R>
 where
     P: AsRef<Path>,

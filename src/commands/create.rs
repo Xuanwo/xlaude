@@ -6,7 +6,7 @@ use std::path::Path;
 
 use crate::git::{execute_git, get_repo_name, is_base_branch, update_submodules};
 use crate::state::{WorktreeInfo, XlaudeState};
-use crate::utils::generate_random_name;
+use crate::utils::{generate_random_name, sanitize_branch_name};
 
 pub fn handle_create(name: Option<String>) -> Result<()> {
     // Check if we're in a git repository
@@ -20,23 +20,27 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
     }
 
     // Generate name if not provided
-    let worktree_name = match name {
+    let branch_name = match name {
         Some(n) => n,
         None => generate_random_name()?,
     };
 
+    // Sanitize the branch name for use in directory names
+    let worktree_name = sanitize_branch_name(&branch_name);
+
     println!(
-        "{} Creating worktree '{}'...",
+        "{} Creating worktree '{}' with branch '{}'...",
         "✨".green(),
-        worktree_name.cyan()
+        worktree_name.cyan(),
+        branch_name.cyan()
     );
 
     // Create branch
-    execute_git(&["branch", &worktree_name]).context("Failed to create branch")?;
+    execute_git(&["branch", &branch_name]).context("Failed to create branch")?;
 
-    // Create worktree
+    // Create worktree with sanitized directory name
     let worktree_dir = format!("../{repo_name}-{worktree_name}");
-    execute_git(&["worktree", "add", &worktree_dir, &worktree_name])
+    execute_git(&["worktree", "add", &worktree_dir, &branch_name])
         .context("Failed to create worktree")?;
 
     // Get absolute path
@@ -75,7 +79,7 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
         key,
         WorktreeInfo {
             name: worktree_name.clone(),
-            branch: worktree_name.clone(),
+            branch: branch_name.clone(),
             path: worktree_path.clone(),
             repo_name,
             created_at: Utc::now(),

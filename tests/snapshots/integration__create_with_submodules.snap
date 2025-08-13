@@ -2,7 +2,7 @@
 source: tests/integration.rs
 expression: redacted
 ---
-✨ Creating worktree 'with-submodule'...
+✨ Creating worktree 'with-submodule' with branch 'with-submodule'...
 📦 Updated submodules
 ✅ Worktree created at: /tmp/TEST_DIR/test-repo-with-submodule
   💡 To open it, run: xlaude open with-submodule

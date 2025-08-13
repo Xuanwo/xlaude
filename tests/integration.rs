@@ -771,3 +771,71 @@ fn test_create_without_submodules() {
     assert!(!stdout.contains("Updated submodules"));
     assert!(!stdout.contains("Warning: Failed to update submodules"));
 }
+
+#[test]
+fn test_create_with_slash_in_branch_name() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree with branch name containing slash
+    let output = ctx.xlaude(&["create", "fix/bug"]).assert().success();
+
+    // Snapshot test output with path redaction
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_paths(&stdout);
+    assert_snapshot!(redacted);
+
+    // Verify worktree was created with sanitized directory name
+    assert!(ctx.worktree_exists("fix-bug"));
+
+    // Verify state file has correct information
+    let state = ctx.read_state();
+    let key = "test-repo/fix-bug".to_string();
+    assert!(state["worktrees"].as_object().unwrap().contains_key(&key));
+
+    let worktree_info = &state["worktrees"][&key];
+    assert_eq!(worktree_info["name"], "fix-bug");
+    assert_eq!(worktree_info["branch"], "fix/bug");
+
+    // Verify branch was created with original name
+    let branch_output = std::process::Command::new("git")
+        .args(["branch", "--list", "fix/bug"])
+        .current_dir(&ctx.repo_dir)
+        .output()
+        .unwrap();
+    assert!(String::from_utf8_lossy(&branch_output.stdout).contains("fix/bug"));
+}
+
+#[test]
+fn test_delete_with_slash_in_branch_name() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree with branch name containing slash
+    ctx.xlaude(&["create", "feature/awesome"])
+        .assert()
+        .success();
+
+    // Verify worktree exists with sanitized name
+    assert!(ctx.worktree_exists("feature-awesome"));
+
+    // Delete the worktree from within it
+    let worktree_dir = ctx
+        .repo_dir
+        .parent()
+        .unwrap()
+        .join("test-repo-feature-awesome");
+    let output = ctx
+        .xlaude_in_dir(&worktree_dir, &["delete"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(stdout.contains("Worktree 'feature-awesome' deleted successfully"));
+
+    // Verify worktree is gone
+    assert!(!ctx.worktree_exists("feature-awesome"));
+
+    // Verify state is updated
+    let state = ctx.read_state();
+    let key = "test-repo/feature-awesome".to_string();
+    assert!(!state["worktrees"].as_object().unwrap().contains_key(&key));
+}

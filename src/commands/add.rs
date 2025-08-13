@@ -4,6 +4,7 @@ use colored::Colorize;
 
 use crate::git::{get_current_branch, get_repo_name, is_in_worktree};
 use crate::state::{WorktreeInfo, XlaudeState};
+use crate::utils::sanitize_branch_name;
 
 pub fn handle_add(name: Option<String>) -> Result<()> {
     // Check if we're in a git repository
@@ -17,8 +18,11 @@ pub fn handle_add(name: Option<String>) -> Result<()> {
     // Get current branch name
     let current_branch = get_current_branch()?;
 
-    // Use provided name or default to branch name
-    let worktree_name = name.unwrap_or_else(|| current_branch.clone());
+    // Use provided name or default to sanitized branch name
+    let worktree_name = match name {
+        Some(n) => n,
+        None => sanitize_branch_name(&current_branch),
+    };
 
     // Get current directory
     let current_dir = std::env::current_dir()?;

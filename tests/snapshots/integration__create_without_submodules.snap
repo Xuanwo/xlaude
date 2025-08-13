@@ -2,6 +2,6 @@
 source: tests/integration.rs
 expression: redacted
 ---
-✨ Creating worktree 'no-submodule'...
+✨ Creating worktree 'no-submodule' with branch 'no-submodule'...
 ✅ Worktree created at: /tmp/TEST_DIR/test-repo-no-submodule
   💡 To open it, run: xlaude open no-submodule

@@ -6,6 +6,7 @@ use std::process::Command;
 
 use crate::git::{get_current_branch, get_repo_name, is_base_branch, is_in_worktree};
 use crate::state::{WorktreeInfo, XlaudeState};
+use crate::utils::sanitize_branch_name;
 
 pub fn handle_open(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
@@ -18,8 +19,11 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
         let current_branch = get_current_branch()?;
         let current_dir = std::env::current_dir()?;
 
+        // Sanitize branch name for key lookup
+        let worktree_name = sanitize_branch_name(&current_branch);
+
         // Check if this worktree is already managed
-        let key = XlaudeState::make_key(&repo_name, &current_branch);
+        let key = XlaudeState::make_key(&repo_name, &worktree_name);
 
         if state.worktrees.contains_key(&key) {
             // Already managed, open directly
@@ -27,7 +31,7 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
                 "{} Opening current worktree '{}/{}'...",
                 "🚀".green(),
                 repo_name,
-                current_branch.cyan()
+                worktree_name.cyan()
             );
         } else {
             // Not managed, ask if user wants to add it
@@ -61,13 +65,13 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
             println!(
                 "{} Adding worktree '{}' to xlaude management...",
                 "➕".green(),
-                current_branch.cyan()
+                worktree_name.cyan()
             );
 
             state.worktrees.insert(
                 key.clone(),
                 WorktreeInfo {
-                    name: current_branch.clone(),
+                    name: worktree_name.clone(),
                     branch: current_branch.clone(),
                     path: current_dir.clone(),
                     repo_name: repo_name.clone(),
@@ -81,7 +85,7 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
                 "{} Opening worktree '{}/{}'...",
                 "🚀".green(),
                 repo_name,
-                current_branch.cyan()
+                worktree_name.cyan()
             );
         }
 
