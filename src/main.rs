@@ -4,12 +4,14 @@ use clap::{Parser, Subcommand};
 mod claude;
 mod commands;
 mod git;
+mod options;
 mod state;
 mod utils;
 
 use commands::{
     handle_add, handle_clean, handle_create, handle_delete, handle_list, handle_open, handle_rename,
 };
+use options::OpenOptions;
 
 #[derive(Parser)]
 #[command(name = "xlaude")]
@@ -30,6 +32,8 @@ enum Commands {
     Open {
         /// Name of the worktree to open (interactive selection if not provided)
         name: Option<String>,
+        #[command(flatten)]
+        options: OpenOptions,
     },
     /// Delete a worktree and clean up
     Delete {
@@ -59,7 +63,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Create { name } => handle_create(name),
-        Commands::Open { name } => handle_open(name),
+        Commands::Open { name, options } => handle_open(name, options),
         Commands::Delete { name } => handle_delete(name),
         Commands::Add { name } => handle_add(name),
         Commands::Rename { old_name, new_name } => handle_rename(old_name, new_name),

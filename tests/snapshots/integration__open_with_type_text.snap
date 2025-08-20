@@ -1,0 +1,7 @@
+---
+source: tests/integration.rs
+expression: redacted
+---
+🚀 Opening worktree 'test-repo/test-typing'...
+[TEST MODE] Simulating prompt execution in Claude Code:
+Hello Claude!

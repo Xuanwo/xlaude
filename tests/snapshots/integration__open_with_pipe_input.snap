@@ -1,0 +1,8 @@
+---
+source: tests/integration.rs
+expression: redacted
+---
+🚀 Opening worktree 'test-repo/test-pipe'...
+[TEST MODE] Simulating prompt execution in Claude Code:
+Hello from pipe!
+This is multi-line input.

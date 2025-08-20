@@ -1,0 +1,8 @@
+---
+source: tests/integration.rs
+expression: redacted
+---
+🚀 Opening worktree 'test-repo/test-append'...
+[TEST MODE] Simulating prompt execution in Claude Code:
+CLI argument
+Piped input to append

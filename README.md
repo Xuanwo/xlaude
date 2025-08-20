@@ -53,9 +53,26 @@ xlaude open
 
 # Interactive selection (when not in a worktree)
 xlaude open
+
+# Open and automatically send prompts to Claude and execute them
+xlaude open --type-text "Help me debug this issue"
+xlaude open feature-auth -t "Review my code changes"
+
+# Pipe content directly to Claude as prompts and execute them
+git diff | xlaude open --type-text
+cat error.log | xlaude open feature-debug -t
+
+# Combine CLI text with piped content as prompts and execute them
+git diff | xlaude open -t "Please analyze these changes:"
+cat error.log | xlaude open --type-text "Help debug this error:"
 ```
 
-This switches to the worktree directory and launches Claude with `--dangerously-skip-permissions`. When run without arguments in a worktree directory, it opens the current worktree directly.
+This switches to the worktree directory and launches Claude with `--dangerously-skip-permissions`. When run without arguments in a worktree directory, it opens the current worktree directly. 
+
+The `--type-text` (or `-t`) option allows you to automatically send prompts to Claude and execute them:
+- **With text**: `--type-text "your message"` or `-t "your message"` sends and executes the specified prompt
+- **Pipe only**: `--type-text` or `-t` (no argument) sends and executes piped input as a prompt
+- **Combined**: `--type-text "prefix"` or `-t "prefix"` with piped input sends and executes both the prefix text and piped content as a single prompt
 
 ### Add existing worktree
 
@@ -122,7 +139,19 @@ Renames a worktree in xlaude management. This only updates the xlaude state and 
 
 2. **Work on the feature** with Claude assistance
 
-3. **Switch contexts**:
+3. **Debug with context**:
+   ```bash
+   # Send error logs directly to Claude and get immediate analysis
+   npm test 2>&1 | xlaude open -t "Tests are failing:"
+   
+   # Get help with specific changes and immediate feedback
+   git diff HEAD~1 | xlaude open -t "Review this commit:"
+   
+   # Analyze code files and get optimization suggestions
+   cat src/auth.rs | xlaude open -t "Please help optimize this code:"
+   ```
+
+4. **Switch contexts**:
    ```bash
    xlaude open  # Select another workspace
    # Or if you're already in a worktree directory:
@@ -130,7 +159,7 @@ Renames a worktree in xlaude management. This only updates the xlaude state and 
    xlaude open  # Opens current worktree directly
    ```
 
-4. **Clean up** when done:
+5. **Clean up** when done:
    ```bash
    xlaude delete auth-system
    # Or clean up all invalid worktrees:

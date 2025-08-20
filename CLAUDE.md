@@ -22,6 +22,8 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 - 切换到 worktree 目录
 - 启动 `claude --dangerously-skip-permissions`
 - 继承所有环境变量
+- 支持 `--type-text` 选项：在 Claude 启动后自动输入指定文本
+- 支持管道输入：使用 `--type-text` 不带参数时从管道读取文本，或将管道内容附加到指定文本后
 
 ### xlaude delete [name]
 删除 worktree 并清理：
@@ -92,6 +94,19 @@ xlaude create  # 可能创建 ../opendal-dolphin 目录
 # 打开并启动 Claude
 xlaude open feature-x  # 打开指定的 worktree
 xlaude open  # 如果在 worktree 中直接打开，否则交互式选择
+
+# 启动 Claude 并自动输入文本
+xlaude open --type-text "帮我调试这个问题"
+xlaude open feature-x --type-text "请帮我审查代码"
+
+# 通过管道传递文本给 Claude（需要使用 --type-text 标志）
+echo "帮我分析这个错误日志" | xlaude open --type-text
+cat error.log | xlaude open feature-x --type-text
+git diff | xlaude open --type-text  # 从管道读取 diff 输出
+
+# 将管道内容附加到指定文本后
+git diff | xlaude open --type-text "请分析这些代码变更："
+echo "具体错误信息" | xlaude open --type-text "帮我调试这个问题："
 
 # 将已存在的 worktree 添加到管理
 cd ../opendal-bugfix

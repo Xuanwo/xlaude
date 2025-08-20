@@ -2,14 +2,82 @@ use anyhow::{Context, Result};
 use chrono::Utc;
 use colored::Colorize;
 use dialoguer::{Confirm, Select};
-use std::process::Command;
+use std::io::Write;
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::Duration;
 
 use crate::git::{get_current_branch, get_repo_name, is_base_branch, is_in_worktree};
+use crate::options::OpenOptions;
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::sanitize_branch_name;
 
-pub fn handle_open(name: Option<String>) -> Result<()> {
+fn launch_claude_with_typing(type_text: Option<String>) -> Result<()> {
+    let claude_cmd = std::env::var("XLAUDE_CLAUDE_CMD").unwrap_or_else(|_| "claude".to_string());
+
+    if let Some(text) = type_text {
+        // Test mode: just print the text to stdout
+        if claude_cmd == "true" {
+            println!("[TEST MODE] Simulating prompt execution in Claude Code:");
+            println!("{}", text);
+            return Ok(());
+        }
+
+        // Launch Claude with stdin pipe for typing
+        let mut cmd = Command::new(&claude_cmd);
+
+        if claude_cmd == "claude" {
+            cmd.arg("--dangerously-skip-permissions");
+        }
+
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .envs(std::env::vars());
+
+        let mut child = cmd.spawn().context("Failed to launch Claude")?;
+
+        // Wait a bit for Claude to start up
+        thread::sleep(Duration::from_millis(500));
+
+        // Send the text to Claude's stdin
+        if let Some(mut stdin) = child.stdin.take() {
+            // Write to stdin and handle pipe errors properly
+            writeln!(stdin, "{}", text).context("Failed to write to Claude's stdin")?;
+            // Close stdin to signal end of input
+            drop(stdin);
+        }
+
+        let status = child.wait().context("Failed to wait for Claude")?;
+
+        if !status.success() {
+            anyhow::bail!("Claude exited with error");
+        }
+    } else {
+        // Launch Claude normally without stdin pipe
+        let mut cmd = Command::new(&claude_cmd);
+
+        if claude_cmd == "claude" {
+            cmd.arg("--dangerously-skip-permissions");
+        }
+
+        cmd.envs(std::env::vars());
+
+        let status = cmd.status().context("Failed to launch Claude")?;
+
+        if !status.success() {
+            anyhow::bail!("Claude exited with error");
+        }
+    }
+
+    Ok(())
+}
+
+pub fn handle_open(name: Option<String>, options: OpenOptions) -> Result<()> {
     let mut state = XlaudeState::load()?;
+
+    // Get the text to type, either from CLI arg or stdin
+    let type_text = options.get_type_text()?;
 
     // Check if current path is a worktree when no name is provided
     // Note: base branches (main/master/develop) are not considered worktrees
@@ -90,23 +158,7 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
         }
 
         // Launch Claude in current directory
-        let claude_cmd =
-            std::env::var("XLAUDE_CLAUDE_CMD").unwrap_or_else(|_| "claude".to_string());
-        let mut cmd = Command::new(&claude_cmd);
-
-        if claude_cmd == "claude" {
-            cmd.arg("--dangerously-skip-permissions");
-        }
-
-        cmd.envs(std::env::vars());
-
-        let status = cmd.status().context("Failed to launch Claude")?;
-
-        if !status.success() {
-            anyhow::bail!("Claude exited with error");
-        }
-
-        return Ok(());
+        return launch_claude_with_typing(type_text);
     }
 
     if state.worktrees.is_empty() {
@@ -161,23 +213,5 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
     // Change to worktree directory and launch Claude
     std::env::set_current_dir(&worktree_info.path).context("Failed to change directory")?;
 
-    // Allow overriding claude command for testing
-    let claude_cmd = std::env::var("XLAUDE_CLAUDE_CMD").unwrap_or_else(|_| "claude".to_string());
-    let mut cmd = Command::new(&claude_cmd);
-
-    // Only add the flag if we're using the real claude command
-    if claude_cmd == "claude" {
-        cmd.arg("--dangerously-skip-permissions");
-    }
-
-    // Inherit all environment variables
-    cmd.envs(std::env::vars());
-
-    let status = cmd.status().context("Failed to launch Claude")?;
-
-    if !status.success() {
-        anyhow::bail!("Claude exited with error");
-    }
-
-    Ok(())
+    launch_claude_with_typing(type_text)
 }

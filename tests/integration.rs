@@ -839,3 +839,174 @@ fn test_delete_with_slash_in_branch_name() {
     let key = "test-repo/feature-awesome".to_string();
     assert!(!state["worktrees"].as_object().unwrap().contains_key(&key));
 }
+
+#[test]
+fn test_open_with_type_text() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-typing"]).assert().success();
+
+    // Test open with --type-text option
+    let output = ctx
+        .xlaude(&["open", "test-typing", "--type-text", "Hello Claude!"])
+        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_output(&stdout);
+    assert_snapshot!(redacted);
+}
+
+#[test]
+fn test_open_with_pipe_input() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-pipe"]).assert().success();
+
+    // Test open with --type-text flag and piped input
+    let output = ctx
+        .xlaude(&["open", "test-pipe", "--type-text"])
+        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
+        .write_stdin("Hello from pipe!\nThis is multi-line input.")
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_output(&stdout);
+    assert_snapshot!(redacted);
+}
+
+#[test]
+fn test_open_type_text_value_appends_pipe() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-append"]).assert().success();
+
+    // Test that --type-text with value appends piped input
+    let output = ctx
+        .xlaude(&["open", "test-append", "--type-text", "CLI argument"])
+        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
+        .write_stdin("Piped input to append")
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_output(&stdout);
+    assert_snapshot!(redacted);
+}
+
+#[test]
+fn test_open_without_type_text_flag_ignores_pipe() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-no-flag"]).assert().success();
+
+    // Test that without --type-text flag, piped input is ignored
+    let output = ctx
+        .xlaude(&["open", "test-no-flag"])
+        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
+        .write_stdin("This should be ignored")
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(stdout.contains("Opening worktree"));
+    assert!(stdout.contains("test-no-flag"));
+}
+
+#[test]
+fn test_open_type_text_value_with_empty_pipe() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-empty-pipe"])
+        .assert()
+        .success();
+
+    // Test that --type-text with value works with empty pipe (should just use the CLI text)
+    let output = ctx
+        .xlaude(&["open", "test-empty-pipe", "--type-text", "CLI text only"])
+        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
+        .write_stdin("") // Empty pipe input
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(stdout.contains("Opening worktree"));
+    assert!(stdout.contains("test-empty-pipe"));
+}
+
+#[test]
+fn test_open_multiline_append_to_cli_text() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-multiline-append"])
+        .assert()
+        .success();
+
+    // Test appending multiline input to CLI text
+    let multiline_input = "Error details:\nLine 1: TypeError\nLine 2: undefined variable";
+    let output = ctx
+        .xlaude(&[
+            "open",
+            "test-multiline-append",
+            "--type-text",
+            "Debug this error:",
+        ])
+        .env("XLAUDE_CLAUDE_CMD", "true")
+        .write_stdin(multiline_input)
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(stdout.contains("Opening worktree"));
+    assert!(stdout.contains("test-multiline-append"));
+}
+
+#[test]
+fn test_open_only_whitespace_pipe() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-only-whitespace"])
+        .assert()
+        .success();
+
+    // Test with only whitespace (should be treated as empty)
+    let whitespace_only = "   \n\t\n   \n";
+    let output = ctx
+        .xlaude(&["open", "test-only-whitespace", "--type-text"])
+        .env("XLAUDE_CLAUDE_CMD", "true")
+        .write_stdin(whitespace_only)
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    assert!(stdout.contains("Opening worktree"));
+    assert!(stdout.contains("test-only-whitespace"));
+}
+
+#[test]
+fn test_open_test_mode_without_type_text() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create worktree
+    ctx.xlaude(&["create", "test-no-text"]).assert().success();
+
+    // Test open without --type-text in test mode (should just succeed without printing text)
+    let output = ctx
+        .xlaude(&["open", "test-no-text"])
+        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_output(&stdout);
+    assert_snapshot!(redacted);
+}
