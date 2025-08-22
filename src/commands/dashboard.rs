@@ -28,6 +28,11 @@ pub struct Dashboard {
     preview_cache: std::collections::HashMap<String, String>,
     list_state: ListState,
     show_help: bool,
+    create_mode: bool,
+    create_input: String,
+    create_repo: Option<String>, // Repository context for creating worktree
+    status_message: Option<String>, // Status message to display
+    status_message_timer: u8,    // Timer to clear status message
 }
 
 struct WorktreeDisplay {
@@ -54,6 +59,11 @@ impl Dashboard {
             preview_cache: std::collections::HashMap::new(),
             list_state: ListState::default(),
             show_help: false,
+            create_mode: false,
+            create_input: String::new(),
+            create_repo: None,
+            status_message: None,
+            status_message_timer: 0,
         };
 
         dashboard.refresh_worktrees();
@@ -147,8 +157,17 @@ impl Dashboard {
         loop {
             terminal.draw(|f| self.render(f))?;
 
+            // Clear status message after a few renders
+            if self.status_message.is_some() {
+                if self.status_message_timer > 0 {
+                    self.status_message_timer -= 1;
+                } else {
+                    self.status_message = None;
+                }
+            }
+
             // Handle events with timeout for auto-refresh
-            if event::poll(Duration::from_secs(5))? {
+            if event::poll(Duration::from_secs(1))? {
                 if let Event::Key(key) = event::read()? {
                     match self.handle_input(key)? {
                         InputResult::Exit => break,
@@ -174,6 +193,69 @@ impl Dashboard {
                             // Refresh state after returning
                             self.refresh()?;
                         }
+                        InputResult::CreateWorktree(name, repo) => {
+                            // Find the repo path if specified
+                            let repo_path = if let Some(repo_name) = &repo {
+                                // Find the repo path from existing worktrees
+                                // If worktree is at /path/parent/repo-worktree
+                                // Then main repo should be at /path/parent/repo
+                                if let Some(worktree) =
+                                    self.worktrees.iter().find(|w| w.repo == *repo_name)
+                                    && let Some(info) = self.state.worktrees.get(&worktree.key)
+                                    && let Some(parent) = info.path.parent()
+                                {
+                                    let path = parent.join(repo_name);
+                                    if path.exists() {
+                                        Some(path)
+                                    } else {
+                                        // If not found, maybe it's the current directory
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
+                            // Create the worktree quietly in background
+                            let created_name =
+                                match crate::commands::create::handle_create_in_dir_quiet(
+                                    name, repo_path, true,
+                                ) {
+                                    Ok(name) => name,
+                                    Err(e) => {
+                                        // Show error message in status area (we'll add this)
+                                        self.status_message =
+                                            Some(format!("Failed to create worktree: {}", e));
+                                        continue;
+                                    }
+                                };
+
+                            // Refresh to show new worktree
+                            self.refresh()?;
+
+                            // Auto-focus on the newly created worktree
+                            if let Some(repo_name) = repo {
+                                let key = format!("{}/{}", repo_name, created_name);
+                                // Find the new worktree in the list and set focus
+                                for (idx, mapped_idx) in self.list_index_map.iter().enumerate() {
+                                    if let Some(worktree_idx) = mapped_idx
+                                        && let Some(worktree) = self.worktrees.get(*worktree_idx)
+                                        && (worktree.key == key || worktree.name == created_name)
+                                    {
+                                        self.selected = idx;
+                                        self.list_state.select(Some(idx));
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Show success message
+                            self.status_message =
+                                Some(format!("✅ Created worktree: {}", created_name));
+                            self.status_message_timer = 5; // Show for 5 seconds
+                        }
                         InputResult::Continue => {}
                     }
                 }
@@ -189,6 +271,44 @@ impl Dashboard {
     fn handle_input(&mut self, key: KeyEvent) -> Result<InputResult> {
         if self.show_help {
             self.show_help = false;
+            return Ok(InputResult::Continue);
+        }
+
+        // Handle create mode input
+        if self.create_mode {
+            match key.code {
+                KeyCode::Esc => {
+                    // Cancel create mode
+                    self.create_mode = false;
+                    self.create_input.clear();
+                }
+                KeyCode::Enter => {
+                    // Create worktree with entered name or use None for random name
+                    let name = if self.create_input.trim().is_empty() {
+                        None
+                    } else {
+                        Some(self.create_input.trim().to_string())
+                    };
+                    let repo = self.create_repo.clone();
+
+                    // Exit create mode
+                    self.create_mode = false;
+                    self.create_input.clear();
+
+                    // Create the worktree
+                    return Ok(InputResult::CreateWorktree(name, repo));
+                }
+                KeyCode::Backspace => {
+                    self.create_input.pop();
+                }
+                KeyCode::Char(c) => {
+                    // Only allow alphanumeric, dash, and underscore
+                    if c.is_alphanumeric() || c == '-' || c == '_' {
+                        self.create_input.push(c);
+                    }
+                }
+                _ => {}
+            }
             return Ok(InputResult::Continue);
         }
 
@@ -239,19 +359,19 @@ impl Dashboard {
                 }
             }
             KeyCode::Char('n') | KeyCode::Char('N') => {
-                // Create new worktree (exit dashboard to run create command)
-                disable_raw_mode()?;
-                execute!(io::stdout(), LeaveAlternateScreen)?;
+                // Enter create mode with dialog
+                self.create_mode = true;
+                self.create_input.clear();
 
-                println!("Creating new worktree...");
-                if let Err(e) = crate::commands::handle_create(None) {
-                    eprintln!("Failed to create worktree: {}", e);
-                    std::thread::sleep(Duration::from_secs(2));
+                // Determine repository context from current selection
+                if let Some(Some(worktree_idx)) = self.list_index_map.get(self.selected)
+                    && let Some(worktree) = self.worktrees.get(*worktree_idx)
+                {
+                    self.create_repo = Some(worktree.repo.clone());
+                } else {
+                    // Find the first repository in the list if no specific selection
+                    self.create_repo = self.worktrees.first().map(|w| w.repo.clone());
                 }
-
-                enable_raw_mode()?;
-                execute!(io::stdout(), EnterAlternateScreen)?;
-                self.refresh()?;
             }
             KeyCode::Char('d') | KeyCode::Char('D') => {
                 // Get the actual worktree index from the mapping
@@ -318,7 +438,7 @@ impl Dashboard {
             .constraints([
                 Constraint::Length(1), // Menu bar
                 Constraint::Min(10),   // Main content
-                Constraint::Length(2), // Help bar
+                Constraint::Length(if self.status_message.is_some() { 3 } else { 2 }), // Help/status bar
             ])
             .split(f.area());
 
@@ -345,24 +465,65 @@ impl Dashboard {
         // Preview pane
         self.render_preview(f, main_chunks[1]);
 
-        // Help bar
-        let help = Paragraph::new(Line::from(vec![
-            Span::raw(" "),
-            Span::styled("Enter", Style::default().fg(Color::Yellow)),
-            Span::raw(" Open  "),
-            Span::styled("n", Style::default().fg(Color::Yellow)),
-            Span::raw(" New  "),
-            Span::styled("d", Style::default().fg(Color::Yellow)),
-            Span::raw(" Stop  "),
-            Span::styled("r", Style::default().fg(Color::Yellow)),
-            Span::raw(" Refresh  "),
-            Span::styled("?", Style::default().fg(Color::Yellow)),
-            Span::raw(" Help  "),
-            Span::styled("q", Style::default().fg(Color::Yellow)),
-            Span::raw(" Quit "),
-        ]))
-        .style(Style::default().fg(Color::DarkGray));
-        f.render_widget(help, chunks[2]);
+        // Help/Status bar
+        if let Some(ref status) = self.status_message {
+            // Split the help area into status and help
+            let help_chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(1), // Status message
+                    Constraint::Length(1), // Help line
+                ])
+                .split(chunks[2]);
+
+            // Show status message
+            let status_widget =
+                Paragraph::new(format!(" {}", status)).style(Style::default().fg(Color::Green));
+            f.render_widget(status_widget, help_chunks[0]);
+
+            // Show help bar
+            let help = Paragraph::new(Line::from(vec![
+                Span::raw(" "),
+                Span::styled("Enter", Style::default().fg(Color::Yellow)),
+                Span::raw(" Open  "),
+                Span::styled("n", Style::default().fg(Color::Yellow)),
+                Span::raw(" New  "),
+                Span::styled("d", Style::default().fg(Color::Yellow)),
+                Span::raw(" Stop  "),
+                Span::styled("r", Style::default().fg(Color::Yellow)),
+                Span::raw(" Refresh  "),
+                Span::styled("?", Style::default().fg(Color::Yellow)),
+                Span::raw(" Help  "),
+                Span::styled("q", Style::default().fg(Color::Yellow)),
+                Span::raw(" Quit "),
+            ]))
+            .style(Style::default().fg(Color::DarkGray));
+            f.render_widget(help, help_chunks[1]);
+        } else {
+            // Just show help bar
+            let help = Paragraph::new(Line::from(vec![
+                Span::raw(" "),
+                Span::styled("Enter", Style::default().fg(Color::Yellow)),
+                Span::raw(" Open  "),
+                Span::styled("n", Style::default().fg(Color::Yellow)),
+                Span::raw(" New  "),
+                Span::styled("d", Style::default().fg(Color::Yellow)),
+                Span::raw(" Stop  "),
+                Span::styled("r", Style::default().fg(Color::Yellow)),
+                Span::raw(" Refresh  "),
+                Span::styled("?", Style::default().fg(Color::Yellow)),
+                Span::raw(" Help  "),
+                Span::styled("q", Style::default().fg(Color::Yellow)),
+                Span::raw(" Quit "),
+            ]))
+            .style(Style::default().fg(Color::DarkGray));
+            f.render_widget(help, chunks[2]);
+        }
+
+        // Render create dialog if in create mode
+        if self.create_mode {
+            self.render_create_dialog(f);
+        }
     }
 
     fn render_project_list(&mut self, f: &mut Frame, area: Rect) {
@@ -595,11 +756,73 @@ impl Dashboard {
         let area = centered_rect(60, 80, f.area());
         f.render_widget(help, area);
     }
+
+    fn render_create_dialog(&self, f: &mut Frame) {
+        // Calculate dialog area (centered, 50% width, 30% height)
+        let area = centered_rect(50, 30, f.area());
+
+        // Clear the dialog area
+        let clear = ratatui::widgets::Clear;
+        f.render_widget(clear, area);
+
+        // Create the dialog content
+        let repo_text = self.create_repo.as_deref().unwrap_or("current repository");
+        let mut lines = vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                format!("Creating new worktree in {}", repo_text),
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+            Line::from(""),
+            Line::from("Enter worktree name:"),
+            Line::from(""),
+            Line::from(vec![
+                Span::raw("  "),
+                Span::styled(
+                    format!("{}_", self.create_input),
+                    Style::default().bg(Color::DarkGray).fg(Color::White),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Enter", Style::default().fg(Color::Green)),
+                Span::raw(" to create  "),
+                Span::styled("Esc", Style::default().fg(Color::Red)),
+                Span::raw(" to cancel"),
+            ]),
+        ];
+
+        // If input is empty, show a hint
+        if self.create_input.is_empty() {
+            lines.insert(
+                7,
+                Line::from(Span::styled(
+                    "  (leave empty for random name)",
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .add_modifier(Modifier::ITALIC),
+                )),
+            );
+        }
+
+        let dialog = Paragraph::new(lines)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Create New Worktree ")
+                    .border_style(Style::default().fg(Color::Blue)),
+            )
+            .alignment(Alignment::Center);
+
+        f.render_widget(dialog, area);
+    }
 }
 
 enum InputResult {
     Exit,
     Attach(String),
+    CreateWorktree(Option<String>, Option<String>), // optional name and optional repo context
     Continue,
 }
 

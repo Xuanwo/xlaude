@@ -39,7 +39,7 @@ pub fn get_repo_name() -> Result<String> {
     get_repo_name_from_directory()
 }
 
-fn extract_repo_name_from_url(url: &str) -> Option<String> {
+pub fn extract_repo_name_from_url(url: &str) -> Option<String> {
     let url = url.trim();
 
     // Remove .git suffix if present
@@ -133,6 +133,7 @@ pub fn is_base_branch() -> Result<bool> {
     Ok(common_base_branches.contains(&current.as_str()))
 }
 
+#[allow(dead_code)]
 pub fn branch_exists(branch_name: &str) -> Result<bool> {
     // Check if branch exists locally
     if execute_git(&[
@@ -200,21 +201,6 @@ pub fn list_worktrees() -> Result<Vec<PathBuf>> {
     Ok(worktrees)
 }
 
-pub fn execute_git_in_dir(dir: &Path, args: &[&str]) -> Result<String> {
-    let output = Command::new("git")
-        .current_dir(dir)
-        .args(args)
-        .output()
-        .context("Failed to execute git command")?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Git command failed: {}", stderr);
-    }
-}
-
 pub fn update_submodules(worktree_path: &Path) -> Result<()> {
     // Check if submodules exist
     let gitmodules = worktree_path.join(".gitmodules");
@@ -222,11 +208,15 @@ pub fn update_submodules(worktree_path: &Path) -> Result<()> {
         return Ok(());
     }
 
-    // Initialize and update submodules
-    execute_git_in_dir(
-        worktree_path,
-        &["submodule", "update", "--init", "--recursive"],
-    )
+    // Initialize and update submodules using git -C
+    execute_git(&[
+        "-C",
+        worktree_path.to_str().unwrap(),
+        "submodule",
+        "update",
+        "--init",
+        "--recursive",
+    ])
     .context("Failed to update submodules")?;
 
     Ok(())
