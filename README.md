@@ -63,9 +63,12 @@ xlaude create feature-auth
 
 # Create with random name (e.g., "dolphin", "rabbit")
 xlaude create
+
+# Create from existing branch (local or remote)
+xlaude create existing-branch
 ```
 
-This creates a new git worktree at `../<repo>-<name>` and a corresponding branch.
+This creates a new git worktree at `../<repo>-<name>`. If the branch doesn't exist, it creates a new one. If the branch already exists (locally or on remote), it creates the worktree from that existing branch.
 
 ### Open an existing workspace
 

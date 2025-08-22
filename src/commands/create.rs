@@ -32,7 +32,7 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
 
     // Check if the branch already exists
     let branch_already_exists = branch_exists(&branch_name)?;
-    
+
     if branch_already_exists {
         println!(
             "{} Creating worktree '{}' from existing branch '{}'...",
@@ -47,7 +47,7 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
             worktree_name.cyan(),
             branch_name.cyan()
         );
-        
+
         // Create branch only if it doesn't exist
         execute_git(&["branch", &branch_name]).context("Failed to create branch")?;
     }

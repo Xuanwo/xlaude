@@ -135,15 +135,29 @@ pub fn is_base_branch() -> Result<bool> {
 
 pub fn branch_exists(branch_name: &str) -> Result<bool> {
     // Check if branch exists locally
-    if execute_git(&["show-ref", "--verify", "--quiet", &format!("refs/heads/{}", branch_name)]).is_ok() {
+    if execute_git(&[
+        "show-ref",
+        "--verify",
+        "--quiet",
+        &format!("refs/heads/{}", branch_name),
+    ])
+    .is_ok()
+    {
         return Ok(true);
     }
-    
+
     // Check if branch exists on remote
-    if execute_git(&["show-ref", "--verify", "--quiet", &format!("refs/remotes/origin/{}", branch_name)]).is_ok() {
+    if execute_git(&[
+        "show-ref",
+        "--verify",
+        "--quiet",
+        &format!("refs/remotes/origin/{}", branch_name),
+    ])
+    .is_ok()
+    {
         return Ok(true);
     }
-    
+
     Ok(false)
 }
 
