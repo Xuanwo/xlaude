@@ -718,6 +718,80 @@ fn test_rename_command() {
 }
 
 #[test]
+fn test_create_duplicate_name() {
+    let ctx = TestContext::new("test-repo");
+
+    // Create a worktree with a specific name
+    ctx.xlaude(&["create", "my-feature"]).assert().success();
+
+    // Try to create another worktree with the same name - should fail
+    ctx.xlaude(&["create", "my-feature"])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("already exists"))
+        .stderr(predicates::str::contains("my-feature"));
+
+    // Verify only one worktree exists in the state
+    let state = ctx.read_state();
+    if let Some(worktrees) = state["worktrees"].as_object() {
+        assert_eq!(worktrees.len(), 1, "Should have exactly one worktree");
+    }
+}
+
+#[test]
+fn test_create_existing_git_worktree() {
+    let ctx = TestContext::new("test-repo");
+    
+    // Create a worktree manually using git (not tracked by xlaude)
+    std::process::Command::new("git")
+        .args([
+            "worktree",
+            "add",
+            "-b",
+            "existing-feature",
+            "../test-repo-existing-feature",
+        ])
+        .current_dir(&ctx.repo_dir)
+        .output()
+        .unwrap();
+    
+    // Try to create a worktree with the same name through xlaude - should fail
+    ctx.xlaude(&["create", "existing-feature"])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("already exists"));
+    
+    // Verify xlaude state is still empty
+    let state = ctx.read_state();
+    if let Some(worktrees) = state["worktrees"].as_object() {
+        assert_eq!(worktrees.len(), 0, "Should have no worktrees in xlaude state");
+    }
+}
+
+#[test]
+fn test_create_existing_directory() {
+    let ctx = TestContext::new("test-repo");
+    
+    // Create a directory manually (not a git worktree)
+    let existing_dir = ctx.temp_dir.path().join("test-repo-existing-dir");
+    fs::create_dir(&existing_dir).unwrap();
+    fs::write(existing_dir.join("file.txt"), "existing content").unwrap();
+    
+    // Try to create a worktree with the same name - should fail
+    ctx.xlaude(&["create", "existing-dir"])
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("Directory"))
+        .stderr(predicates::str::contains("already exists"));
+    
+    // Verify xlaude state is still empty
+    let state = ctx.read_state();
+    if let Some(worktrees) = state["worktrees"].as_object() {
+        assert_eq!(worktrees.len(), 0, "Should have no worktrees in xlaude state");
+    }
+}
+
+#[test]
 fn test_create_with_submodules() {
     let ctx = TestContext::new("test-repo");
 

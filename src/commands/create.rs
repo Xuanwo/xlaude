@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::commands::open::handle_open;
-use crate::git::{execute_git, extract_repo_name_from_url, get_repo_name, update_submodules};
+use crate::git::{execute_git, extract_repo_name_from_url, get_repo_name, list_worktrees, update_submodules};
 use crate::input::{get_command_arg, smart_confirm};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::{generate_random_name, sanitize_branch_name};
@@ -81,6 +81,60 @@ pub fn handle_create_in_dir_quiet(
 
     // Sanitize the branch name for use in directory names
     let worktree_name = sanitize_branch_name(&branch_name);
+
+    // Check if a worktree with this name already exists in xlaude state
+    let state = XlaudeState::load()?;
+    let key = XlaudeState::make_key(&repo_name, &worktree_name);
+    if state.worktrees.contains_key(&key) {
+        anyhow::bail!(
+            "A worktree named '{}' already exists for repository '{}' (tracked by xlaude). Please choose a different name.",
+            worktree_name,
+            repo_name
+        );
+    }
+    
+    // Check if the worktree directory will be created
+    let worktree_dir_path = if let Some(ref path) = repo_path {
+        path.parent()
+            .unwrap()
+            .join(format!("{repo_name}-{worktree_name}"))
+    } else {
+        std::env::current_dir()?
+            .parent()
+            .unwrap()
+            .join(format!("{repo_name}-{worktree_name}"))
+    };
+    
+    // Check if the directory already exists
+    if worktree_dir_path.exists() {
+        anyhow::bail!(
+            "Directory '{}' already exists. Please choose a different name or remove the existing directory.",
+            worktree_dir_path.display()
+        );
+    }
+    
+    // Check if a git worktree already exists at this path
+    // Need to run git worktree list in the correct directory
+    let existing_worktrees = if let Some(ref path) = repo_path {
+        // Parse git worktree list output from the specified directory
+        let output = execute_git(&["-C", path.to_str().unwrap(), "worktree", "list", "--porcelain"])?;
+        let mut worktrees = Vec::new();
+        for line in output.lines() {
+            if let Some(worktree_path) = line.strip_prefix("worktree ") {
+                worktrees.push(PathBuf::from(worktree_path));
+            }
+        }
+        worktrees
+    } else {
+        list_worktrees()?
+    };
+    
+    if existing_worktrees.iter().any(|w| w == &worktree_dir_path) {
+        anyhow::bail!(
+            "A git worktree already exists at '{}'. Please choose a different name or remove the existing worktree.",
+            worktree_dir_path.display()
+        );
+    }
 
     // Check if the branch already exists
     let branch_already_exists = exec_git(&[
