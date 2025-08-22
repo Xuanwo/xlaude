@@ -8,7 +8,7 @@ fn setup_test_repo() -> (TempDir, String, String) {
     let temp_dir = TempDir::new().unwrap();
     let repo_path = temp_dir.path().join("test-repo");
     fs::create_dir(&repo_path).unwrap();
-    
+
     // Create config directory for xlaude state
     let config_dir = temp_dir.path().join(".config/xlaude");
     fs::create_dir_all(&config_dir).unwrap();
@@ -56,7 +56,11 @@ fn setup_test_repo() -> (TempDir, String, String) {
         .assert()
         .success();
 
-    (temp_dir, repo_path.to_str().unwrap().to_string(), config_dir.to_str().unwrap().to_string())
+    (
+        temp_dir,
+        repo_path.to_str().unwrap().to_string(),
+        config_dir.to_str().unwrap().to_string(),
+    )
 }
 
 #[test]
