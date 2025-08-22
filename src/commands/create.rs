@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::commands::open::handle_open;
-use crate::git::{execute_git, get_repo_name, is_base_branch, update_submodules};
+use crate::git::{branch_exists, execute_git, get_repo_name, is_base_branch, update_submodules};
 use crate::input::{get_command_arg, smart_confirm};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::{generate_random_name, sanitize_branch_name};
@@ -30,15 +30,27 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
     // Sanitize the branch name for use in directory names
     let worktree_name = sanitize_branch_name(&branch_name);
 
-    println!(
-        "{} Creating worktree '{}' with branch '{}'...",
-        "✨".green(),
-        worktree_name.cyan(),
-        branch_name.cyan()
-    );
-
-    // Create branch
-    execute_git(&["branch", &branch_name]).context("Failed to create branch")?;
+    // Check if the branch already exists
+    let branch_already_exists = branch_exists(&branch_name)?;
+    
+    if branch_already_exists {
+        println!(
+            "{} Creating worktree '{}' from existing branch '{}'...",
+            "✨".green(),
+            worktree_name.cyan(),
+            branch_name.cyan()
+        );
+    } else {
+        println!(
+            "{} Creating worktree '{}' with new branch '{}'...",
+            "✨".green(),
+            worktree_name.cyan(),
+            branch_name.cyan()
+        );
+        
+        // Create branch only if it doesn't exist
+        execute_git(&["branch", &branch_name]).context("Failed to create branch")?;
+    }
 
     // Create worktree with sanitized directory name
     let worktree_dir = format!("../{repo_name}-{worktree_name}");

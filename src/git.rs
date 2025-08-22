@@ -133,6 +133,20 @@ pub fn is_base_branch() -> Result<bool> {
     Ok(common_base_branches.contains(&current.as_str()))
 }
 
+pub fn branch_exists(branch_name: &str) -> Result<bool> {
+    // Check if branch exists locally
+    if execute_git(&["show-ref", "--verify", "--quiet", &format!("refs/heads/{}", branch_name)]).is_ok() {
+        return Ok(true);
+    }
+    
+    // Check if branch exists on remote
+    if execute_git(&["show-ref", "--verify", "--quiet", &format!("refs/remotes/origin/{}", branch_name)]).is_ok() {
+        return Ok(true);
+    }
+    
+    Ok(false)
+}
+
 pub fn is_working_tree_clean() -> Result<bool> {
     let status = execute_git(&["status", "--porcelain"])?;
     Ok(status.is_empty())
