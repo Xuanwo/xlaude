@@ -37,20 +37,6 @@ impl PipedInputReader {
             _ => Ok(Some(line.trim().to_string())),
         }
     }
-
-    /// Read all available input lines (non-blocking)
-    #[allow(dead_code)]
-    pub fn read_all_available(&mut self) -> Result<Vec<String>> {
-        let mut lines = Vec::new();
-        let mut line = String::new();
-
-        while self.reader.read_line(&mut line)? > 0 {
-            lines.push(line.trim().to_string());
-            line.clear();
-        }
-
-        Ok(lines)
-    }
 }
 
 /// Global piped input reader (singleton)
@@ -171,36 +157,4 @@ pub fn drain_stdin() -> Result<()> {
     // tools like 'yes' that provide infinite input. The actual solution is
     // to not inherit stdin in child processes (using Stdio::null()).
     Ok(())
-}
-
-/// Get command argument or prompt for selection
-/// Priority: CLI argument > piped input > interactive selection
-#[allow(dead_code)]
-pub fn get_arg_or_select<T>(
-    arg: Option<String>,
-    items: &[T],
-    prompt: &str,
-    display_fn: impl Fn(&T) -> String,
-    match_fn: impl Fn(&T, &str) -> bool,
-) -> Result<Option<T>>
-where
-    T: Clone,
-{
-    // 1. Try to get argument from CLI or pipe
-    if let Some(name) = get_command_arg(arg)? {
-        // Find matching item
-        for item in items {
-            if match_fn(item, &name) {
-                return Ok(Some(item.clone()));
-            }
-        }
-        anyhow::bail!("Item '{}' not found", name);
-    }
-
-    // 2. Interactive selection or None
-    if let Some(index) = smart_select(prompt, items, display_fn)? {
-        return Ok(Some(items[index].clone()));
-    }
-
-    Ok(None)
 }
