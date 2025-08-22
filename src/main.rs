@@ -7,6 +7,7 @@ mod commands;
 mod completions;
 mod git;
 mod state;
+mod tmux;
 mod utils;
 
 use commands::{
@@ -73,6 +74,8 @@ enum Commands {
         #[arg(long, default_value = "simple")]
         format: String,
     },
+    /// Launch interactive dashboard for managing Claude sessions
+    Dashboard,
 }
 
 fn main() -> Result<()> {
@@ -89,5 +92,6 @@ fn main() -> Result<()> {
         Commands::Dir { name } => handle_dir(name),
         Commands::Completions { shell } => completions::handle_completions(shell),
         Commands::CompleteWorktrees { format } => commands::handle_complete_worktrees(&format),
+        Commands::Dashboard => commands::handle_dashboard(),
     }
 }

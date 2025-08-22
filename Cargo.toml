@@ -17,6 +17,8 @@ chrono = { version = "0.4.41", features = ["serde"] }
 rand = "0.8.5"
 bip39 = "2.1.0"
 anyhow = "1.0.98"
+ratatui = "0.28"
+crossterm = "0.28"
 
 [dev-dependencies]
 insta = { version = "1.41.1", features = ["json", "redactions"] }

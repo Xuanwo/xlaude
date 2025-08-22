@@ -13,6 +13,7 @@ This project is designed as a personal workflow tool, tailored to my specific de
 - **Smart cleanup**: Safely delete worktrees with uncommitted change detection
 - **Session tracking**: View Claude conversation history across instances
 - **Random naming**: Generate memorable names using BIP39 word list
+- **Dashboard mode**: Run multiple Claude instances in background and switch between them (requires tmux)
 
 ## Installation
 
@@ -160,6 +161,33 @@ code $(xlaude dir feature-auth)
 vim $(xlaude dir feature-auth)/src/main.rs
 ```
 
+### Interactive Dashboard (requires tmux)
+
+```bash
+xlaude dashboard
+```
+
+Launches an interactive TUI dashboard for managing multiple Claude sessions:
+
+- **View all worktrees**: See status of all projects and Claude sessions
+- **Background sessions**: Run multiple Claude instances simultaneously
+- **Quick switching**: Press Enter to attach to a session, Ctrl+Q to return to dashboard
+- **Session preview**: View recent output from background sessions
+- **Keyboard shortcuts**:
+  - `↑/↓` or `j/k`: Navigate project list
+  - `Enter`: Attach to selected project
+  - `Ctrl+Q`: Detach from Claude back to dashboard
+  - `n`: Create new worktree
+  - `d`: Stop selected Claude session
+  - `r`: Refresh list
+  - `?`: Show help
+  - `q`: Quit dashboard
+
+**Note**: Dashboard requires tmux. Install with:
+- macOS: `brew install tmux`
+- Ubuntu/Debian: `apt-get install tmux`
+- Fedora: `dnf install tmux`
+
 ## Typical Workflow
 
 1. **Start a new feature**:
@@ -203,6 +231,7 @@ State is persisted to platform-specific locations:
 - Git with worktree support
 - Claude CLI installed
 - Rust (for building from source)
+- tmux (optional, for dashboard mode)
 
 ## License
 
