@@ -57,20 +57,8 @@ impl TmuxManager {
             anyhow::bail!("Failed to create tmux session: {}", stderr);
         }
 
-        // Set key bindings for the session after creation
-        // This ensures Ctrl+Q works even if config wasn't fully loaded
-        Command::new("tmux")
-            .args([
-                "bind-key",
-                "-t",
-                &session_name,
-                "-n",
-                "C-q",
-                "detach-client",
-            ])
-            .output()?;
-
-        // Set status bar for this specific session
+        // Configure key bindings and status bar for the session
+        self.configure_session_keys(&session_name)?;
         self.configure_session_status(&session_name)?;
 
         Ok(())
@@ -97,6 +85,9 @@ impl TmuxManager {
 
         // Ensure status bar is configured before attaching
         self.configure_session_status(&session_name)?;
+
+        // Set key bindings before attaching
+        self.configure_session_keys(&session_name)?;
 
         // Directly attach to the session without transition screen
         let status = Command::new("tmux")
@@ -195,6 +186,54 @@ impl TmuxManager {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
 
+    /// Configure key bindings for a specific session
+    fn configure_session_keys(&self, session_name: &str) -> Result<()> {
+        // Set Ctrl+Q to detach (session-specific)
+        Command::new("tmux")
+            .args([
+                "send-keys",
+                "-t",
+                session_name,
+                "-X",
+                "cancel", // Cancel any current mode
+            ])
+            .output()?;
+
+        // Bind keys directly in the session
+        Command::new("tmux")
+            .args(["bind-key", "-n", "C-q", "detach-client"])
+            .output()?;
+
+        // Set Ctrl+T to toggle terminal pane on the right side
+        // Using split-window with toggle logic to avoid flashing
+        // Also focus on the new pane when opening
+        let toggle_cmd = r#"if-shell "[ $(tmux list-panes | wc -l) -eq 1 ]" "split-window -h -l 50% -c '#{pane_current_path}' \; select-pane -t 1" "select-pane -t 0 \; kill-pane -t 1""#;
+        Command::new("tmux")
+            .args(["bind-key", "-n", "C-t", toggle_cmd])
+            .output()?;
+
+        // Configure pane borders for better visual separation
+        Command::new("tmux")
+            .args([
+                "set-option",
+                "-g",
+                "pane-border-style",
+                "fg=colour240,bg=colour235",
+            ])
+            .output()?;
+
+        Command::new("tmux")
+            .args([
+                "set-option",
+                "-g",
+                "pane-active-border-style",
+                "fg=colour45,bg=colour235",
+            ])
+            .output()?;
+
+        Ok(())
+    }
+
     /// Configure status bar for a specific session
     fn configure_session_status(&self, session_name: &str) -> Result<()> {
         // Set status bar on
@@ -232,7 +271,7 @@ impl TmuxManager {
                 "-t",
                 session_name,
                 "status-right",
-                " Ctrl+Q: Dashboard ",
+                " Ctrl+T: Terminal | Ctrl+Q: Dashboard ",
             ])
             .output()?;
 
@@ -247,7 +286,7 @@ impl TmuxManager {
                 "-t",
                 session_name,
                 "status-right-length",
-                "20",
+                "40",
             ])
             .output()?;
 
@@ -277,14 +316,14 @@ impl TmuxManager {
 
     /// Create custom tmux configuration
     fn create_custom_config(&self) -> Result<String> {
-        let config = r#"# Menu bar style status at top
+        let config = r##"# Menu bar style status at top
 set -g status on
 set -g status-position top
 set -g status-style "bg=colour238,fg=colour250"
 set -g status-left " 📂 xlaude "
-set -g status-right " Ctrl+Q: Dashboard "
+set -g status-right " Ctrl+T: Terminal | Ctrl+Q: Dashboard "
 set -g status-left-length 50
-set -g status-right-length 20
+set -g status-right-length 40
 set -g window-status-current-format ""
 set -g window-status-format ""
 
@@ -299,6 +338,13 @@ set -g bell-action none
 
 # Single key to return to dashboard
 bind-key -n C-q detach-client
+
+# Toggle terminal with Ctrl+T (right-side panel)
+bind-key -n C-t if-shell "[ $(tmux list-panes | wc -l) -eq 1 ]" "split-window -h -l 50% -c '#{pane_current_path}' \; select-pane -t 1" "select-pane -t 0 \; kill-pane -t 1"
+
+# Pane border styling for visual separation
+set -g pane-border-style "fg=colour240,bg=colour235"
+set -g pane-active-border-style "fg=colour45,bg=colour235"
 
 # No prefix key - this is important for Ctrl+Q to work
 set -g prefix None
@@ -315,7 +361,7 @@ set -g history-limit 50000
 set -s escape-time 0
 
 # Mouse support
-set -g mouse on"#;
+set -g mouse on"##;
 
         // Use xlaude config directory instead of /tmp
         let config_dir = crate::state::get_config_dir()?;
