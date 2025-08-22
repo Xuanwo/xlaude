@@ -1,8 +1,10 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
 mod claude;
 mod commands;
+mod completions;
 mod git;
 mod state;
 mod utils;
@@ -58,6 +60,19 @@ enum Commands {
         /// Name of the worktree (interactive selection if not provided)
         name: Option<String>,
     },
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
+    },
+    /// Output worktree info for shell completions (hidden)
+    #[command(hide = true)]
+    CompleteWorktrees {
+        /// Output format: simple or detailed
+        #[arg(long, default_value = "simple")]
+        format: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -72,5 +87,7 @@ fn main() -> Result<()> {
         Commands::List => handle_list(),
         Commands::Clean => handle_clean(),
         Commands::Dir { name } => handle_dir(name),
+        Commands::Completions { shell } => completions::handle_completions(shell),
+        Commands::CompleteWorktrees { format } => commands::handle_complete_worktrees(&format),
     }
 }

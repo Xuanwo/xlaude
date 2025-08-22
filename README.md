@@ -28,6 +28,29 @@ cd xlaude
 cargo build --release
 ```
 
+### Shell Completions
+
+xlaude supports tab completion for bash, zsh, and fish shells. After installation, generate and install the completion script:
+
+```bash
+# Bash
+xlaude completions bash > ~/.bash_completion.d/xlaude
+# Or add to .bashrc:
+# eval "$(xlaude completions bash)"
+
+# Zsh
+xlaude completions zsh > ~/.zfunc/_xlaude
+# Then add to .zshrc: fpath=(~/.zfunc $fpath)
+
+# Fish
+xlaude completions fish > ~/.config/fish/completions/xlaude.fish
+```
+
+The completions provide:
+- Command and subcommand completion
+- Dynamic worktree name completion for `open`, `dir`, `delete`, and `rename` commands
+- Rich descriptions showing repository name and session count (zsh/fish)
+
 ## Usage
 
 ### Create a new workspace
