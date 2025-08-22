@@ -8,7 +8,8 @@ mod state;
 mod utils;
 
 use commands::{
-    handle_add, handle_clean, handle_create, handle_delete, handle_dir, handle_list, handle_open, handle_rename,
+    handle_add, handle_clean, handle_create, handle_delete, handle_dir, handle_list, handle_open,
+    handle_rename,
 };
 
 #[derive(Parser)]
