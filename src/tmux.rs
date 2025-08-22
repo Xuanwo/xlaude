@@ -317,9 +317,12 @@ set -s escape-time 0
 # Mouse support
 set -g mouse on"#;
 
-        let config_path = "/tmp/xlaude-tmux.conf";
-        fs::write(config_path, config)?;
-        Ok(config_path.to_string())
+        // Use xlaude config directory instead of /tmp
+        let config_dir = crate::state::get_config_dir()?;
+        fs::create_dir_all(&config_dir)?;
+        let config_path = config_dir.join("tmux.conf");
+        fs::write(&config_path, config)?;
+        Ok(config_path.to_string_lossy().to_string())
     }
 
     fn make_session_name(&self, project: &str) -> String {
