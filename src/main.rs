@@ -53,7 +53,11 @@ enum Commands {
         new_name: String,
     },
     /// List all active Claude instances
-    List,
+    List {
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
     /// Clean up invalid worktrees from state
     Clean,
     /// Get the directory path of a worktree
@@ -85,7 +89,7 @@ fn main() -> Result<()> {
         Commands::Delete { name } => handle_delete(name),
         Commands::Add { name } => handle_add(name),
         Commands::Rename { old_name, new_name } => handle_rename(old_name, new_name),
-        Commands::List => handle_list(),
+        Commands::List { json } => handle_list(json),
         Commands::Clean => handle_clean(),
         Commands::Dir { name } => handle_dir(name),
         Commands::Completions { shell } => completions::handle_completions(shell),
