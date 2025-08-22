@@ -64,6 +64,13 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 - 检查新名称是否已存在，避免冲突
 - 保留所有 Claude sessions 和元数据
 
+### xlaude dir [name]
+获取 worktree 的目录路径：
+- 有参数：返回指定 worktree 的绝对路径
+- 无参数：显示交互式选择列表
+- 输出纯路径，无装饰符，便于 shell 命令使用
+- 适用于与其他工具集成（cd、编辑器、zoxide 等）
+
 ## 技术实现
 
 - 使用 Rust 开发
@@ -122,4 +129,17 @@ xlaude delete my-feature # 清理 worktree
 # 直接在当前 worktree 中启动
 cd ../opendal-feature
 xlaude open  # 自动检测并打开当前 worktree
+
+# 获取 worktree 路径（用于目录切换）
+cd $(xlaude dir feature-x)  # 切换到指定 worktree
+xlaude dir  # 交互式选择 worktree 并输出路径
+
+# 配合 shell function 使用
+# 在 .bashrc/.zshrc 中添加：
+# xcd() { cd $(xlaude dir "$@"); }
+xcd feature-x  # 快速切换到 worktree
+
+# 与其他工具集成
+code $(xlaude dir feature-x)  # 用 VSCode 打开
+vim $(xlaude dir feature-x)/src/main.rs  # 编辑文件
 ```

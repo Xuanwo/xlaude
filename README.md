@@ -112,6 +112,31 @@ xlaude rename <old_name> <new_name>
 
 Renames a worktree in xlaude management. This only updates the xlaude state and doesn't affect the actual git worktree or directory.
 
+### Get worktree directory path
+
+```bash
+# Get path for specific worktree
+xlaude dir feature-auth
+
+# Interactive selection
+xlaude dir
+```
+
+Returns the absolute path of a worktree. Useful for integration with other tools:
+
+```bash
+# Quick directory switching
+cd $(xlaude dir feature-auth)
+
+# Add shell function for convenience (in .bashrc/.zshrc)
+xcd() { cd $(xlaude dir "$@"); }
+xcd feature-auth
+
+# Open in editor
+code $(xlaude dir feature-auth)
+vim $(xlaude dir feature-auth)/src/main.rs
+```
+
 ## Typical Workflow
 
 1. **Start a new feature**:

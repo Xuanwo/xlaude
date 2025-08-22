@@ -8,7 +8,7 @@ mod state;
 mod utils;
 
 use commands::{
-    handle_add, handle_clean, handle_create, handle_delete, handle_list, handle_open, handle_rename,
+    handle_add, handle_clean, handle_create, handle_delete, handle_dir, handle_list, handle_open, handle_rename,
 };
 
 #[derive(Parser)]
@@ -52,6 +52,11 @@ enum Commands {
     List,
     /// Clean up invalid worktrees from state
     Clean,
+    /// Get the directory path of a worktree
+    Dir {
+        /// Name of the worktree (interactive selection if not provided)
+        name: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -65,5 +70,6 @@ fn main() -> Result<()> {
         Commands::Rename { old_name, new_name } => handle_rename(old_name, new_name),
         Commands::List => handle_list(),
         Commands::Clean => handle_clean(),
+        Commands::Dir { name } => handle_dir(name),
     }
 }
