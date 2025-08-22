@@ -6,6 +6,7 @@ mod claude;
 mod commands;
 mod completions;
 mod git;
+mod input;
 mod state;
 mod tmux;
 mod utils;

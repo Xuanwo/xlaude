@@ -14,6 +14,7 @@ This project is designed as a personal workflow tool, tailored to my specific de
 - **Session tracking**: View Claude conversation history across instances
 - **Random naming**: Generate memorable names using BIP39 word list
 - **Dashboard mode**: Run multiple Claude instances in background and switch between them (requires tmux)
+- **Pipe input support**: Integrate with Unix tools for automation
 
 ## Installation
 
@@ -48,6 +49,7 @@ xlaude completions fish > ~/.config/fish/completions/xlaude.fish
 ```
 
 The completions provide:
+
 - Command and subcommand completion
 - Dynamic worktree name completion for `open`, `dir`, `delete`, and `rename` commands
 - Rich descriptions showing repository name and session count (zsh/fish)
@@ -99,6 +101,7 @@ xlaude list
 ```
 
 Shows all managed worktrees with:
+
 - Name, repository, and path
 - Creation time
 - Recent Claude sessions (up to 3)
@@ -115,6 +118,7 @@ xlaude delete feature-auth
 ```
 
 Performs safety checks for:
+
 - Uncommitted changes
 - Unpushed commits
 - Branch merge status
@@ -191,6 +195,7 @@ Launches an interactive TUI dashboard for managing multiple Claude sessions:
 ## Typical Workflow
 
 1. **Start a new feature**:
+
    ```bash
    xlaude create auth-system
    xlaude open auth-system
@@ -199,6 +204,7 @@ Launches an interactive TUI dashboard for managing multiple Claude sessions:
 2. **Work on the feature** with Claude assistance
 
 3. **Switch contexts**:
+
    ```bash
    xlaude open  # Select another workspace
    # Or if you're already in a worktree directory:
@@ -207,15 +213,70 @@ Launches an interactive TUI dashboard for managing multiple Claude sessions:
    ```
 
 4. **Clean up** when done:
+
    ```bash
    xlaude delete auth-system
    # Or clean up all invalid worktrees:
    xlaude clean
    ```
 
+## Pipe Input and Automation
+
+xlaude supports pipe input for automation and integration with other Unix tools:
+
+### Basic pipe input
+
+```bash
+# Provide branch name via pipe
+echo "feature-x" | xlaude create
+
+# Select worktree via pipe
+echo "feature-x" | xlaude open
+echo "feature-x" | xlaude dir
+```
+
+### Auto-confirmation
+
+```bash
+# Auto-confirm deletion with yes
+yes | xlaude delete feature-x
+
+# Use environment variable for force-yes
+XLAUDE_YES=1 xlaude delete feature-x
+```
+
+### Integration with other tools
+
+```bash
+# Use with fzf for fuzzy selection
+xlaude list | fzf | xlaude open
+
+# Batch operations
+for branch in feature-1 feature-2; do
+    echo $branch | xlaude create
+done
+
+# Chain with other commands
+echo "hotfix" | xlaude create && xlaude open hotfix
+```
+
+### Priority order
+
+When multiple input sources are available:
+
+1. Command-line arguments (highest priority)
+2. Piped input
+3. Interactive prompts (lowest priority)
+
+```bash
+# CLI argument takes precedence over pipe
+echo "wrong-name" | xlaude open correct-name  # Opens "correct-name"
+```
+
 ## Configuration
 
 State is persisted to platform-specific locations:
+
 - macOS: `~/Library/Application Support/com.xuanwo.xlaude/state.json`
 - Linux: `~/.config/xlaude/state.json`
 - Windows: `%APPDATA%\xuanwo\xlaude\config\state.json`
@@ -225,6 +286,12 @@ State is persisted to platform-specific locations:
 - Worktree keys use format: `<repo-name>/<worktree-name>` (v0.3+)
 - Automatic migration from older formats
 - Tracks creation time and Claude session history
+
+### Environment Variables
+
+- `XLAUDE_YES`: Set to "1" to auto-confirm all prompts
+- `XLAUDE_NON_INTERACTIVE`: Set to "1" to disable interactive prompts
+- `XLAUDE_CLAUDE_CMD`: Override the Claude command (default: "claude")
 
 ## Requirements
 

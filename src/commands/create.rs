@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use colored::Colorize;
-use dialoguer::Confirm;
 use std::fs;
 use std::path::Path;
 
 use crate::commands::open::handle_open;
 use crate::git::{execute_git, get_repo_name, is_base_branch, update_submodules};
+use crate::input::{get_command_arg, smart_confirm};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::{generate_random_name, sanitize_branch_name};
 
@@ -21,8 +21,8 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
         );
     }
 
-    // Generate name if not provided
-    let branch_name = match name {
+    // Get name from CLI args or pipe, generate if not provided
+    let branch_name = match get_command_arg(name)? {
         Some(n) => n,
         None => generate_random_name()?,
     };
@@ -96,8 +96,12 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
     );
 
     // Ask if user wants to open the worktree
-    // Check for non-interactive mode
-    let should_open = if std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
+    // Skip opening in test mode, when explicitly disabled, or in non-interactive mode with mock Claude
+    let should_open = if std::env::var("XLAUDE_TEST_MODE").is_ok()
+        || std::env::var("XLAUDE_NO_AUTO_OPEN").is_ok()
+        || (std::env::var("XLAUDE_NON_INTERACTIVE").is_ok()
+            && std::env::var("XLAUDE_CLAUDE_CMD").as_deref() == Ok("true"))
+    {
         println!(
             "  {} To open it, run: {} {}",
             "💡".cyan(),
@@ -106,10 +110,7 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
         );
         false
     } else {
-        Confirm::new()
-            .with_prompt("Would you like to open the worktree now?")
-            .default(true)
-            .interact()?
+        smart_confirm("Would you like to open the worktree now?", true)?
     };
 
     if should_open {

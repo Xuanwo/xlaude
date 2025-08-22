@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use colored::Colorize;
-use dialoguer::Confirm;
 
 use crate::git::{execute_git, has_unpushed_commits, is_working_tree_clean};
+use crate::input::{get_command_arg, smart_confirm};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::execute_in_dir;
 
@@ -46,7 +46,9 @@ impl DeletionConfig {
 pub fn handle_delete(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
 
-    let (key, worktree_info) = find_worktree_to_delete(&state, name)?;
+    // Get name from CLI args or pipe
+    let target_name = get_command_arg(name)?;
+    let (key, worktree_info) = find_worktree_to_delete(&state, target_name)?;
     let config = DeletionConfig::from_env(&worktree_info)?;
 
     println!(
@@ -129,7 +131,7 @@ fn find_current_worktree(state: &XlaudeState) -> Result<(String, WorktreeInfo)> 
 }
 
 /// Handle the case where worktree directory doesn't exist
-fn handle_missing_worktree(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Result<bool> {
+fn handle_missing_worktree(worktree_info: &WorktreeInfo, _config: &DeletionConfig) -> Result<bool> {
     println!(
         "{} Worktree directory not found at {}",
         "⚠️ ".yellow(),
@@ -140,15 +142,7 @@ fn handle_missing_worktree(worktree_info: &WorktreeInfo, config: &DeletionConfig
         "ℹ️".blue()
     );
 
-    if config.is_interactive {
-        Confirm::new()
-            .with_prompt("Remove this worktree from xlaude management?")
-            .default(true)
-            .interact()
-            .context("Failed to get user confirmation")
-    } else {
-        Ok(true)
-    }
+    smart_confirm("Remove this worktree from xlaude management?", true)
 }
 
 /// Perform all checks needed before deletion
@@ -214,21 +208,13 @@ fn check_branch_merged_via_pr(branch: &str) -> bool {
 fn confirm_deletion(
     worktree_info: &WorktreeInfo,
     checks: &DeletionChecks,
-    config: &DeletionConfig,
+    _config: &DeletionConfig,
 ) -> Result<bool> {
     // Show warnings for pending work
     if checks.has_pending_work() {
         show_pending_work_warnings(checks);
 
-        if !config.is_interactive {
-            return Ok(false); // Don't delete in non-interactive mode with pending work
-        }
-
-        return Confirm::new()
-            .with_prompt("Are you sure you want to delete this worktree?")
-            .default(false)
-            .interact()
-            .context("Failed to get user confirmation");
+        return smart_confirm("Are you sure you want to delete this worktree?", false);
     }
 
     // Show branch merge status
@@ -238,16 +224,8 @@ fn confirm_deletion(
         println!("  {} Branch was merged via PR", "ℹ️".blue());
     }
 
-    // Ask for confirmation in interactive mode
-    if config.is_interactive {
-        Confirm::new()
-            .with_prompt(format!("Delete worktree '{}'?", worktree_info.name))
-            .default(true)
-            .interact()
-            .context("Failed to get user confirmation")
-    } else {
-        Ok(!checks.has_pending_work())
-    }
+    // Ask for confirmation
+    smart_confirm(&format!("Delete worktree '{}'?", worktree_info.name), true)
 }
 
 /// Show warnings for uncommitted changes or unpushed commits
@@ -341,10 +319,7 @@ fn delete_branch(worktree_info: &WorktreeInfo, config: &DeletionConfig) -> Resul
         return Ok(());
     }
 
-    let force_delete = Confirm::new()
-        .with_prompt("Branch is not fully merged. Force delete?")
-        .default(false)
-        .interact()?;
+    let force_delete = smart_confirm("Branch is not fully merged. Force delete?", false)?;
 
     if force_delete {
         execute_git(&["branch", "-D", &worktree_info.branch])
