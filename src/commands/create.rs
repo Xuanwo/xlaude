@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use colored::Colorize;
+use dialoguer::Confirm;
 use std::fs;
 use std::path::Path;
 
+use crate::commands::open::handle_open;
 use crate::git::{execute_git, get_repo_name, is_base_branch, update_submodules};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::{generate_random_name, sanitize_branch_name};
@@ -92,12 +94,34 @@ pub fn handle_create(name: Option<String>) -> Result<()> {
         "✅".green(),
         worktree_path.display()
     );
-    println!(
-        "  {} To open it, run: {} {}",
-        "💡".cyan(),
-        "xlaude open".cyan(),
-        worktree_name.cyan()
-    );
+
+    // Ask if user wants to open the worktree
+    // Check for non-interactive mode
+    let should_open = if std::env::var("XLAUDE_NON_INTERACTIVE").is_ok() {
+        println!(
+            "  {} To open it, run: {} {}",
+            "💡".cyan(),
+            "xlaude open".cyan(),
+            worktree_name.cyan()
+        );
+        false
+    } else {
+        Confirm::new()
+            .with_prompt("Would you like to open the worktree now?")
+            .default(true)
+            .interact()?
+    };
+
+    if should_open {
+        handle_open(Some(worktree_name.clone()))?;
+    } else if std::env::var("XLAUDE_NON_INTERACTIVE").is_err() {
+        println!(
+            "  {} To open it later, run: {} {}",
+            "💡".cyan(),
+            "xlaude open".cyan(),
+            worktree_name.cyan()
+        );
+    }
 
     Ok(())
 }
