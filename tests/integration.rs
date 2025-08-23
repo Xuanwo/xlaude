@@ -741,7 +741,7 @@ fn test_create_duplicate_name() {
 #[test]
 fn test_create_existing_git_worktree() {
     let ctx = TestContext::new("test-repo");
-    
+
     // Create a worktree manually using git (not tracked by xlaude)
     std::process::Command::new("git")
         .args([
@@ -754,40 +754,48 @@ fn test_create_existing_git_worktree() {
         .current_dir(&ctx.repo_dir)
         .output()
         .unwrap();
-    
+
     // Try to create a worktree with the same name through xlaude - should fail
     ctx.xlaude(&["create", "existing-feature"])
         .assert()
         .failure()
         .stderr(predicates::str::contains("already exists"));
-    
+
     // Verify xlaude state is still empty
     let state = ctx.read_state();
     if let Some(worktrees) = state["worktrees"].as_object() {
-        assert_eq!(worktrees.len(), 0, "Should have no worktrees in xlaude state");
+        assert_eq!(
+            worktrees.len(),
+            0,
+            "Should have no worktrees in xlaude state"
+        );
     }
 }
 
 #[test]
 fn test_create_existing_directory() {
     let ctx = TestContext::new("test-repo");
-    
+
     // Create a directory manually (not a git worktree)
     let existing_dir = ctx.temp_dir.path().join("test-repo-existing-dir");
     fs::create_dir(&existing_dir).unwrap();
     fs::write(existing_dir.join("file.txt"), "existing content").unwrap();
-    
+
     // Try to create a worktree with the same name - should fail
     ctx.xlaude(&["create", "existing-dir"])
         .assert()
         .failure()
         .stderr(predicates::str::contains("Directory"))
         .stderr(predicates::str::contains("already exists"));
-    
+
     // Verify xlaude state is still empty
     let state = ctx.read_state();
     if let Some(worktrees) = state["worktrees"].as_object() {
-        assert_eq!(worktrees.len(), 0, "Should have no worktrees in xlaude state");
+        assert_eq!(
+            worktrees.len(),
+            0,
+            "Should have no worktrees in xlaude state"
+        );
     }
 }
 

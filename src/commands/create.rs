@@ -5,7 +5,9 @@ use std::fs;
 use std::path::PathBuf;
 
 use crate::commands::open::handle_open;
-use crate::git::{execute_git, extract_repo_name_from_url, get_repo_name, list_worktrees, update_submodules};
+use crate::git::{
+    execute_git, extract_repo_name_from_url, get_repo_name, list_worktrees, update_submodules,
+};
 use crate::input::{get_command_arg, smart_confirm};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::{generate_random_name, sanitize_branch_name};
@@ -92,7 +94,7 @@ pub fn handle_create_in_dir_quiet(
             repo_name
         );
     }
-    
+
     // Check if the worktree directory will be created
     let worktree_dir_path = if let Some(ref path) = repo_path {
         path.parent()
@@ -104,7 +106,7 @@ pub fn handle_create_in_dir_quiet(
             .unwrap()
             .join(format!("{repo_name}-{worktree_name}"))
     };
-    
+
     // Check if the directory already exists
     if worktree_dir_path.exists() {
         anyhow::bail!(
@@ -112,12 +114,18 @@ pub fn handle_create_in_dir_quiet(
             worktree_dir_path.display()
         );
     }
-    
+
     // Check if a git worktree already exists at this path
     // Need to run git worktree list in the correct directory
     let existing_worktrees = if let Some(ref path) = repo_path {
         // Parse git worktree list output from the specified directory
-        let output = execute_git(&["-C", path.to_str().unwrap(), "worktree", "list", "--porcelain"])?;
+        let output = execute_git(&[
+            "-C",
+            path.to_str().unwrap(),
+            "worktree",
+            "list",
+            "--porcelain",
+        ])?;
         let mut worktrees = Vec::new();
         for line in output.lines() {
             if let Some(worktree_path) = line.strip_prefix("worktree ") {
@@ -128,7 +136,7 @@ pub fn handle_create_in_dir_quiet(
     } else {
         list_worktrees()?
     };
-    
+
     if existing_worktrees.iter().any(|w| w == &worktree_dir_path) {
         anyhow::bail!(
             "A git worktree already exists at '{}'. Please choose a different name or remove the existing worktree.",
