@@ -15,6 +15,7 @@ use ratatui::{
 use std::io;
 use std::time::Duration;
 
+use crate::claude_status::{ClaudeStatus, ClaudeStatusDetector};
 use crate::state::XlaudeState;
 use crate::tmux::{SessionInfo, TmuxManager};
 
@@ -33,6 +34,8 @@ pub struct Dashboard {
     create_repo: Option<String>, // Repository context for creating worktree
     status_message: Option<String>, // Status message to display
     status_message_timer: u8,    // Timer to clear status message
+    status_detector: ClaudeStatusDetector,
+    claude_statuses: std::collections::HashMap<String, ClaudeStatus>,
 }
 
 struct WorktreeDisplay {
@@ -40,7 +43,7 @@ struct WorktreeDisplay {
     repo: String,
     key: String,
     has_session: bool,
-    is_attached: bool,
+    claude_status: ClaudeStatus,
 }
 
 impl Dashboard {
@@ -64,6 +67,8 @@ impl Dashboard {
             create_repo: None,
             status_message: None,
             status_message_timer: 0,
+            status_detector: ClaudeStatusDetector::new(),
+            claude_statuses: std::collections::HashMap::new(),
         };
 
         dashboard.refresh_worktrees();
@@ -89,7 +94,11 @@ impl Dashboard {
                 repo: info.repo_name.clone(),
                 key: key.clone(),
                 has_session: session.is_some(),
-                is_attached: session.map(|s| s.is_attached).unwrap_or(false),
+                claude_status: self
+                    .claude_statuses
+                    .get(&info.name)
+                    .cloned()
+                    .unwrap_or(ClaudeStatus::NotRunning),
             });
         }
 
@@ -105,27 +114,40 @@ impl Dashboard {
         // Refresh tmux sessions
         self.sessions = self.tmux.list_sessions().unwrap_or_default();
 
+        // Update Claude statuses for all running sessions
+        self.claude_statuses.clear();
+        for session in &self.sessions {
+            // Find the original worktree name
+            let worktree_name = self
+                .state
+                .worktrees
+                .values()
+                .find(|w| {
+                    let safe_name = w.name.replace(['-', '.'], "_");
+                    safe_name == session.project || w.name == session.project
+                })
+                .map(|w| w.name.clone())
+                .unwrap_or(session.project.clone());
+
+            // Capture pane output and analyze status
+            if let Ok(output) = self.tmux.capture_pane(&worktree_name, 50) {
+                let status = self.status_detector.analyze_output(&output);
+                self.claude_statuses.insert(worktree_name.clone(), status);
+
+                // Cache preview for inactive sessions
+                if !session.is_attached {
+                    self.preview_cache.insert(worktree_name, output);
+                }
+            }
+        }
+
         // Update worktree list
         self.refresh_worktrees();
 
-        // Update preview cache for inactive sessions
-        self.preview_cache.clear();
+        // Update preview cache for inactive sessions (already done above)
         for session in &self.sessions {
             if !session.is_attached {
-                // Find the original worktree name for this session
-                let worktree_name = self
-                    .worktrees
-                    .iter()
-                    .find(|w| {
-                        let safe_name = w.name.replace(['-', '.'], "_");
-                        safe_name == session.project || w.name == session.project
-                    })
-                    .map(|w| w.name.clone())
-                    .unwrap_or(session.project.clone());
-
-                if let Ok(preview) = self.tmux.capture_pane(&worktree_name, 15) {
-                    self.preview_cache.insert(worktree_name, preview);
-                }
+                // Already handled above
             }
         }
 
@@ -166,8 +188,8 @@ impl Dashboard {
                 }
             }
 
-            // Handle events with timeout for auto-refresh
-            if event::poll(Duration::from_secs(1))? {
+            // Handle events with shorter timeout for more responsive updates
+            if event::poll(Duration::from_millis(500))? {
                 if let Event::Key(key) = event::read()? {
                     match self.handle_input(key)? {
                         InputResult::Exit => break,
@@ -260,7 +282,7 @@ impl Dashboard {
                     }
                 }
             } else {
-                // Auto-refresh every 5 seconds
+                // Auto-refresh every 500ms for better responsiveness
                 self.refresh()?;
             }
         }
@@ -544,21 +566,14 @@ impl Dashboard {
                 self.list_index_map.push(None); // Header has no worktree
             }
 
-            // Status icon
-            let status = if worktree.is_attached {
-                "●"
-            } else if worktree.has_session {
-                "○"
+            // Status icon based on Claude status
+            let (status, status_color) = if !worktree.has_session {
+                ("◌", Color::DarkGray)
             } else {
-                "◌"
-            };
-
-            let status_color = if worktree.is_attached {
-                Color::Green
-            } else if worktree.has_session {
-                Color::Yellow
-            } else {
-                Color::DarkGray
+                (
+                    worktree.claude_status.display_icon(),
+                    worktree.claude_status.color(),
+                )
             };
 
             // Build item
@@ -614,11 +629,12 @@ impl Dashboard {
                 .iter()
                 .find(|s| s.project == safe_name || s.project == worktree.name)
             {
+                // Show both session status and Claude status
                 lines.push(Line::from(vec![
-                    Span::styled("Status: ", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("Session: ", Style::default().add_modifier(Modifier::BOLD)),
                     Span::styled(
                         if session.is_attached {
-                            "Active"
+                            "Attached"
                         } else {
                             "Background"
                         },
@@ -627,6 +643,18 @@ impl Dashboard {
                         } else {
                             Color::Yellow
                         }),
+                    ),
+                ]));
+
+                lines.push(Line::from(vec![
+                    Span::styled("Claude: ", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled(
+                        format!(
+                            "{} {}",
+                            worktree.claude_status.display_icon(),
+                            worktree.claude_status.display_text()
+                        ),
+                        Style::default().fg(worktree.claude_status.color()),
                     ),
                 ]));
                 lines.push(Line::from(vec![
@@ -658,7 +686,7 @@ impl Dashboard {
                 }
             } else {
                 lines.push(Line::from(vec![
-                    Span::styled("Status: ", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("Session: ", Style::default().add_modifier(Modifier::BOLD)),
                     Span::styled("Not running", Style::default().fg(Color::DarkGray)),
                 ]));
                 lines.push(Line::from(""));
