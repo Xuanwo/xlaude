@@ -1,7 +1,6 @@
 use anyhow::Result;
 use atty::Stream;
 use dialoguer::{Confirm, Select};
-use once_cell::sync::Lazy;
 use std::io::{self, BufRead, BufReader};
 use std::sync::Mutex;
 
@@ -40,13 +39,14 @@ impl PipedInputReader {
 }
 
 /// Global piped input reader (singleton)
-static PIPED_INPUT: Lazy<Mutex<Option<PipedInputReader>>> = Lazy::new(|| {
-    if is_piped_input() {
-        Mutex::new(Some(PipedInputReader::new()))
-    } else {
-        Mutex::new(None)
-    }
-});
+static PIPED_INPUT: std::sync::LazyLock<Mutex<Option<PipedInputReader>>> =
+    std::sync::LazyLock::new(|| {
+        if is_piped_input() {
+            Mutex::new(Some(PipedInputReader::new()))
+        } else {
+            Mutex::new(None)
+        }
+    });
 
 /// Read a single line from piped input
 pub fn read_piped_line() -> Result<Option<String>> {

@@ -212,6 +212,19 @@ impl TmuxManager {
             .args(["bind-key", "-n", "C-t", toggle_cmd])
             .output()?;
 
+        // Set Ctrl+O to open editor
+        // Check if editor is configured in xlaude state
+        if let Ok(state) = crate::state::XlaudeState::load()
+            && let Some(editor) = &state.editor
+        {
+            // Editor is configured, bind the key
+            let editor_cmd = format!(r#"run-shell "{} '#{{pane_current_path}}' &""#, editor);
+            Command::new("tmux")
+                .args(["bind-key", "-n", "C-o", &editor_cmd])
+                .output()?;
+        }
+        // If no editor configured, don't bind Ctrl+O - user should configure in dashboard
+
         // Configure pane borders for better visual separation
         Command::new("tmux")
             .args([
@@ -271,7 +284,7 @@ impl TmuxManager {
                 "-t",
                 session_name,
                 "status-right",
-                " Ctrl+T: Terminal | Ctrl+Q: Dashboard ",
+                " Ctrl+T: Terminal | Ctrl+O: Editor | Ctrl+Q: Dashboard ",
             ])
             .output()?;
 
@@ -286,7 +299,7 @@ impl TmuxManager {
                 "-t",
                 session_name,
                 "status-right-length",
-                "40",
+                "50",
             ])
             .output()?;
 
@@ -321,9 +334,9 @@ set -g status on
 set -g status-position top
 set -g status-style "bg=colour238,fg=colour250"
 set -g status-left " 📂 xlaude "
-set -g status-right " Ctrl+T: Terminal | Ctrl+Q: Dashboard "
+set -g status-right " Ctrl+T: Terminal | Ctrl+O: Editor | Ctrl+Q: Dashboard "
 set -g status-left-length 50
-set -g status-right-length 40
+set -g status-right-length 50
 set -g window-status-current-format ""
 set -g window-status-format ""
 
@@ -387,16 +400,19 @@ pub struct SessionInfo {
 }
 
 impl SessionInfo {
-    pub fn format_time(&self, timestamp: i64) -> String {
+    pub fn format_time(timestamp: i64) -> String {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_secs() as i64;
+            .as_secs();
+
+        // Convert to i64 safely, clamping to i64::MAX if necessary
+        let now = std::cmp::min(now, i64::MAX as u64) as i64;
 
         let diff = now - timestamp;
 
         if diff < 60 {
-            format!("{}s ago", diff)
+            format!("{diff}s ago")
         } else if diff < 3600 {
             format!("{}m ago", diff / 60)
         } else if diff < 86400 {

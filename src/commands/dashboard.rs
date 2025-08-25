@@ -36,6 +36,8 @@ pub struct Dashboard {
     status_message_timer: u8,    // Timer to clear status message
     status_detector: ClaudeStatusDetector,
     claude_statuses: std::collections::HashMap<String, ClaudeStatus>,
+    config_mode: bool,
+    config_editor_input: String,
 }
 
 struct WorktreeDisplay {
@@ -69,6 +71,8 @@ impl Dashboard {
             status_message_timer: 0,
             status_detector: ClaudeStatusDetector::new(),
             claude_statuses: std::collections::HashMap::new(),
+            config_mode: false,
+            config_editor_input: String::new(),
         };
 
         dashboard.refresh_worktrees();
@@ -296,6 +300,37 @@ impl Dashboard {
             return Ok(InputResult::Continue);
         }
 
+        // Handle config mode input
+        if self.config_mode {
+            match key.code {
+                KeyCode::Esc => {
+                    // Cancel config mode without saving
+                    self.config_mode = false;
+                    // Restore original editor value
+                    self.config_editor_input = self.state.editor.clone().unwrap_or_default();
+                }
+                KeyCode::Enter => {
+                    // Save configuration
+                    let editor = self.config_editor_input.trim();
+                    if !editor.is_empty() {
+                        self.state.editor = Some(editor.to_string());
+                        self.state.save()?;
+                        self.status_message = Some(format!("✅ Editor set to: {}", editor));
+                        self.status_message_timer = 5;
+                    }
+                    self.config_mode = false;
+                }
+                KeyCode::Backspace => {
+                    self.config_editor_input.pop();
+                }
+                KeyCode::Char(c) => {
+                    self.config_editor_input.push(c);
+                }
+                _ => {}
+            }
+            return Ok(InputResult::Continue);
+        }
+
         // Handle create mode input
         if self.create_mode {
             match key.code {
@@ -335,10 +370,10 @@ impl Dashboard {
         }
 
         match key.code {
-            KeyCode::Char('q') | KeyCode::Char('Q') => {
+            KeyCode::Char('q' | 'Q') => {
                 return Ok(InputResult::Exit);
             }
-            KeyCode::Char('?') | KeyCode::Char('h') => {
+            KeyCode::Char('?' | 'h') => {
                 self.show_help = true;
             }
             KeyCode::Up | KeyCode::Char('k') => {
@@ -380,7 +415,7 @@ impl Dashboard {
                     return Ok(InputResult::Attach(worktree.name.clone()));
                 }
             }
-            KeyCode::Char('n') | KeyCode::Char('N') => {
+            KeyCode::Char('n' | 'N') => {
                 // Enter create mode with dialog
                 self.create_mode = true;
                 self.create_input.clear();
@@ -395,7 +430,7 @@ impl Dashboard {
                     self.create_repo = self.worktrees.first().map(|w| w.repo.clone());
                 }
             }
-            KeyCode::Char('d') | KeyCode::Char('D') => {
+            KeyCode::Char('d' | 'D') => {
                 // Get the actual worktree index from the mapping
                 if let Some(Some(worktree_idx)) = self.list_index_map.get(self.selected)
                     && let Some(worktree) = self.worktrees.get(*worktree_idx)
@@ -407,8 +442,13 @@ impl Dashboard {
                     self.refresh()?;
                 }
             }
-            KeyCode::Char('r') | KeyCode::Char('R') => {
+            KeyCode::Char('r' | 'R') => {
                 self.refresh()?;
+            }
+            KeyCode::Char('c') | KeyCode::Char('C') => {
+                // Enter config mode
+                self.config_mode = true;
+                self.config_editor_input = self.state.editor.clone().unwrap_or_default();
             }
             _ => {}
         }
@@ -512,6 +552,8 @@ impl Dashboard {
                 Span::raw(" New  "),
                 Span::styled("d", Style::default().fg(Color::Yellow)),
                 Span::raw(" Stop  "),
+                Span::styled("c", Style::default().fg(Color::Yellow)),
+                Span::raw(" Config  "),
                 Span::styled("r", Style::default().fg(Color::Yellow)),
                 Span::raw(" Refresh  "),
                 Span::styled("?", Style::default().fg(Color::Yellow)),
@@ -531,6 +573,8 @@ impl Dashboard {
                 Span::raw(" New  "),
                 Span::styled("d", Style::default().fg(Color::Yellow)),
                 Span::raw(" Stop  "),
+                Span::styled("c", Style::default().fg(Color::Yellow)),
+                Span::raw(" Config  "),
                 Span::styled("r", Style::default().fg(Color::Yellow)),
                 Span::raw(" Refresh  "),
                 Span::styled("?", Style::default().fg(Color::Yellow)),
@@ -545,6 +589,11 @@ impl Dashboard {
         // Render create dialog if in create mode
         if self.create_mode {
             self.render_create_dialog(f);
+        }
+
+        // Render config dialog if in config mode
+        if self.config_mode {
+            self.render_config_dialog(f);
         }
     }
 
@@ -659,14 +708,14 @@ impl Dashboard {
                 ]));
                 lines.push(Line::from(vec![
                     Span::styled("Created: ", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(session.format_time(session.created_at)),
+                    Span::raw(SessionInfo::format_time(session.created_at)),
                 ]));
                 lines.push(Line::from(vec![
                     Span::styled(
                         "Last activity: ",
                         Style::default().add_modifier(Modifier::BOLD),
                     ),
-                    Span::raw(session.format_time(session.last_activity)),
+                    Span::raw(SessionInfo::format_time(session.last_activity)),
                 ]));
                 lines.push(Line::from(""));
 
@@ -839,6 +888,62 @@ impl Dashboard {
                 Block::default()
                     .borders(Borders::ALL)
                     .title(" Create New Worktree ")
+                    .border_style(Style::default().fg(Color::Blue)),
+            )
+            .alignment(Alignment::Center);
+
+        f.render_widget(dialog, area);
+    }
+
+    fn render_config_dialog(&self, f: &mut Frame) {
+        // Calculate dialog area (centered, 60% width, 40% height)
+        let area = centered_rect(60, 40, f.area());
+
+        // Clear the dialog area
+        let clear = ratatui::widgets::Clear;
+        f.render_widget(clear, area);
+
+        // Create the dialog content
+        let lines = vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "Configuration",
+                Style::default().add_modifier(Modifier::BOLD),
+            )),
+            Line::from(""),
+            Line::from("Editor command for opening projects:"),
+            Line::from(""),
+            Line::from(vec![
+                Span::raw("  "),
+                Span::styled(
+                    format!("{}_", self.config_editor_input),
+                    Style::default().bg(Color::DarkGray).fg(Color::White),
+                ),
+            ]),
+            Line::from(""),
+            Line::from(Span::styled(
+                "Examples: zed, code, vim, nvim, subl, 'code -n'",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::ITALIC),
+            )),
+            Line::from(""),
+            Line::from("This editor will be used when pressing Ctrl+O in tmux sessions."),
+            Line::from(""),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Enter", Style::default().fg(Color::Green)),
+                Span::raw(" to save  "),
+                Span::styled("Esc", Style::default().fg(Color::Red)),
+                Span::raw(" to cancel"),
+            ]),
+        ];
+
+        let dialog = Paragraph::new(lines)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Configuration ")
                     .border_style(Style::default().fg(Color::Blue)),
             )
             .alignment(Alignment::Center);
