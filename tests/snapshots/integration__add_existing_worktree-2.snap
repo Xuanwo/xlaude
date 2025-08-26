@@ -3,6 +3,7 @@ source: tests/integration.rs
 expression: state
 ---
 {
+  "editor": null,
   "worktrees": {
     "test-repo/manual": {
       "branch": "manual-branch",
