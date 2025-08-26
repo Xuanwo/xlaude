@@ -113,7 +113,10 @@ impl Dashboard {
                 if !session_matches_any {
                     // This session doesn't correspond to any existing worktree, kill it
                     if let Err(e) = self.tmux.kill_session(&session.project) {
-                        eprintln!("Failed to clean up orphaned tmux session {}: {}", session.project, e);
+                        eprintln!(
+                            "Failed to clean up orphaned tmux session {}: {}",
+                            session.project, e
+                        );
                     }
                 }
             }
