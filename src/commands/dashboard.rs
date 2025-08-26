@@ -80,6 +80,45 @@ impl Dashboard {
     fn refresh_worktrees(&mut self) {
         self.worktrees.clear();
 
+        // Collect all valid worktree names for cleanup
+        let valid_worktree_names: std::collections::HashSet<String> = self
+            .state
+            .worktrees
+            .values()
+            .map(|info| info.name.clone())
+            .collect();
+
+        // Clean up tmux sessions for worktrees that no longer exist
+        for session in &self.sessions {
+            // Find the original worktree name from the session
+            let worktree_name = self
+                .state
+                .worktrees
+                .values()
+                .find(|w| {
+                    let safe_name = w.name.replace(['-', '.'], "_");
+                    safe_name == session.project || w.name == session.project
+                })
+                .map(|w| w.name.clone());
+
+            // If session exists but corresponding worktree doesn't, kill the session
+            if worktree_name.is_none() {
+                // Try to reconstruct the original name from session.project
+                // session.project is the safe name (with underscores)
+                // We need to check if any valid worktree matches this pattern
+                let session_matches_any = valid_worktree_names
+                    .iter()
+                    .any(|name| name.replace(['-', '.'], "_") == session.project);
+
+                if !session_matches_any {
+                    // This session doesn't correspond to any existing worktree, kill it
+                    if let Err(e) = self.tmux.kill_session(&session.project) {
+                        eprintln!("Failed to clean up orphaned tmux session {}: {}", session.project, e);
+                    }
+                }
+            }
+        }
+
         // Get all worktrees from state
         for (key, info) in &self.state.worktrees {
             // Match session by converting name to safe format (same as tmux session name)
@@ -114,6 +153,12 @@ impl Dashboard {
         // Refresh tmux sessions
         self.sessions = self.tmux.list_sessions().unwrap_or_default();
 
+        // Update worktree list (this will also clean up orphaned sessions)
+        self.refresh_worktrees();
+
+        // Re-fetch sessions after cleanup
+        self.sessions = self.tmux.list_sessions().unwrap_or_default();
+
         // Update Claude statuses for all running sessions
         self.claude_statuses.clear();
         for session in &self.sessions {
@@ -138,16 +183,6 @@ impl Dashboard {
                 if !session.is_attached {
                     self.preview_cache.insert(worktree_name, output);
                 }
-            }
-        }
-
-        // Update worktree list
-        self.refresh_worktrees();
-
-        // Update preview cache for inactive sessions (already done above)
-        for session in &self.sessions {
-            if !session.is_attached {
-                // Already handled above
             }
         }
 
