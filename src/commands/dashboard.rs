@@ -130,7 +130,7 @@ impl Dashboard {
                 .unwrap_or(session.project.clone());
 
             // Capture pane output and analyze status
-            if let Ok(output) = self.tmux.capture_pane(&worktree_name, 50) {
+            if let Ok(output) = self.tmux.capture_pane(&worktree_name, 100) {
                 let status = self.status_detector.analyze_output(&output);
                 self.claude_statuses.insert(worktree_name.clone(), status);
 

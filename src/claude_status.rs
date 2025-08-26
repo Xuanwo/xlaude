@@ -85,8 +85,8 @@ impl ClaudeStatusDetector {
         // Clean the output
         let lines: Vec<&str> = output.lines().collect();
 
-        // Check last few lines for patterns
-        let last_lines = lines.iter().rev().take(10).collect::<Vec<_>>();
+        // Check last few lines for patterns (check more lines for better detection)
+        let last_lines = lines.iter().rev().take(20).collect::<Vec<_>>();
 
         // Pattern 1: Waiting for input - cursor or Human: prompt
         if self.is_waiting_for_input(&last_lines, output) {
@@ -113,34 +113,33 @@ impl ClaudeStatusDetector {
     }
 
     fn is_waiting_for_input(&self, last_lines: &[&&str], full_output: &str) -> bool {
-        // Check for cursor at the end
+        // Check for Claude TUI input box pattern
+        // The input box looks like: │ >                   │
+        // It appears at the bottom of the screen when waiting for input
+        
+        // Check the last few lines for the input pattern
+        for line in last_lines.iter().rev().take(5) {
+            // Look for lines that start and end with │ and contain >
+            // This is the most reliable indicator of waiting for input
+            let trimmed = line.trim();
+            if trimmed.starts_with("│") && trimmed.ends_with("│") {
+                // Check if it contains the prompt character >
+                // Note: may have non-breaking spaces (\u{a0}) instead of regular spaces
+                if line.contains(">") || line.contains(">\u{a0}") || line.contains("│\u{a0}>") {
+                    return true;
+                }
+            }
+        }
+
+        // Check for traditional cursor at the end
         if full_output.ends_with("▌") || full_output.ends_with("█") {
             return true;
         }
 
-        // Check for Human: prompt
+        // Check for Human: prompt (older Claude versions)
         for line in last_lines {
             let trimmed = line.trim();
             if trimmed == "Human:" || trimmed.starts_with("Human: ") {
-                return true;
-            }
-            // Check for input prompt patterns
-            if trimmed.ends_with(":") && trimmed.len() < 20 {
-                return true;
-            }
-        }
-
-        // Check for common Claude waiting patterns
-        if let Some(last) = last_lines.first() {
-            let last_trimmed = last.trim();
-            // Empty line after Assistant response often means waiting
-            if last_trimmed.is_empty()
-                && last_lines.len() > 1
-                && let Some(second_last) = last_lines.get(1)
-                && (second_last.starts_with("Assistant:")
-                    || second_last.contains("I'll")
-                    || second_last.contains("Let me"))
-            {
                 return true;
             }
         }
@@ -166,37 +165,27 @@ impl ClaudeStatusDetector {
 
     fn is_processing(&self, last_lines: &[&&str]) -> bool {
         for line in last_lines {
-            let trimmed = line.trim();
-
-            // Tool execution patterns
-            if trimmed.contains("Running")
-                || trimmed.contains("Executing")
-                || trimmed.contains("Processing")
-                || trimmed.contains("Building")
-                || trimmed.contains("Compiling")
-                || trimmed.contains("Installing")
-            {
+            // Most reliable: "(esc to interrupt)" indicator
+            if line.contains("(esc to interrupt)") {
+                return true;
+            }
+            
+            // Active tool output with ⎿ symbol and "Running" or ellipsis
+            if line.contains("⎿") && (line.contains("Running") || line.contains("…")) {
+                return true;
+            }
+            
+            // Check for working indicators
+            if line.contains("✽") && (line.contains("Working") || line.contains("Processing")) {
                 return true;
             }
 
-            // Claude thinking patterns
-            if trimmed.contains("Thinking...")
-                || trimmed.contains("Analyzing")
-                || trimmed.contains("Let me")
-                || trimmed.contains("I'll")
-                || trimmed.contains("Looking at")
-                || trimmed.contains("Checking")
-            {
-                // But make sure it's recent (not followed by completion)
-                if last_lines.first().is_some_and(|l| l.trim() == trimmed) {
-                    return true;
-                }
-            }
-
-            // Command output patterns (active output)
-            if trimmed.starts_with("+")
-                || trimmed.starts_with(">>>")
-                || trimmed.starts_with("$") && trimmed.len() > 2
+            // Traditional patterns
+            if line.contains("Executing")
+                || line.contains("Processing")
+                || line.contains("Building")
+                || line.contains("Compiling")
+                || line.contains("Installing")
             {
                 return true;
             }
