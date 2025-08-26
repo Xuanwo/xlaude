@@ -116,7 +116,7 @@ impl ClaudeStatusDetector {
         // Check for Claude TUI input box pattern
         // The input box looks like: │ >                   │
         // It appears at the bottom of the screen when waiting for input
-        
+
         // Check the last few lines for the input pattern
         for line in last_lines.iter().rev().take(5) {
             // Look for lines that start and end with │ and contain >
@@ -169,12 +169,12 @@ impl ClaudeStatusDetector {
             if line.contains("(esc to interrupt)") {
                 return true;
             }
-            
+
             // Active tool output with ⎿ symbol and "Running" or ellipsis
             if line.contains("⎿") && (line.contains("Running") || line.contains("…")) {
                 return true;
             }
-            
+
             // Check for working indicators
             if line.contains("✽") && (line.contains("Working") || line.contains("Processing")) {
                 return true;
