@@ -6,8 +6,8 @@ use std::process::{Command, Stdio};
 use crate::git::{get_current_branch, get_repo_name, is_base_branch, is_in_worktree};
 use crate::input::{drain_stdin, get_command_arg, is_piped_input, smart_confirm, smart_select};
 use crate::state::{WorktreeInfo, XlaudeState};
-use crate::utils::sanitize_branch_name;
 use crate::utils::resolve_agent_command;
+use crate::utils::sanitize_branch_name;
 
 pub fn handle_open(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
