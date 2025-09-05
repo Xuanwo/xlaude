@@ -20,6 +20,7 @@ anyhow = "1.0.98"
 ratatui = "0.28"
 crossterm = "0.28"
 atty = "0.2"
+shell-words = "1.1.0"
 
 [dev-dependencies]
 insta = { version = "1.41.1", features = ["json", "redactions"] }

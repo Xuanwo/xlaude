@@ -13,14 +13,14 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 - **不会自动启动 Claude**
 
 ### xlaude open [name]
-打开已存在的 worktree 并启动 Claude：
+打开已存在的 worktree 并启动全局配置的 Agent（默认为 Claude）：
 - 有参数：打开指定的 worktree
 - 无参数：
   - 如果当前目录是 worktree（非 main/master/develop）：直接打开当前 worktree
   - 如果当前 worktree 未被管理：询问是否添加并打开
   - 否则：显示交互式选择列表
 - 切换到 worktree 目录
-- 启动 `claude --dangerously-skip-permissions`
+- 启动全局配置的 `agent` 命令（默认：`claude --dangerously-skip-permissions`）
 - 继承所有环境变量
 
 ### xlaude delete [name]
@@ -85,6 +85,24 @@ xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktr
 - 使用 BIP39 词库生成随机名称
 - 彩色输出和交互式确认
 - 集成测试覆盖所有核心功能
+
+## 全局 Agent 配置
+
+`agent` 字段用于配置启动会话时使用的完整命令行（全局唯一，对 `open` 和 Dashboard 均生效）：
+
+```json
+{
+  "worktrees": { /* ... */ },
+  "editor": "zed",
+  "agent": "codex"
+}
+```
+
+说明：
+
+- 若未设置，默认值为 `claude --dangerously-skip-permissions`。
+- 该值按 shell 风格进行分词解析，支持引号；如需管道/重定向，请写成脚本后在此引用脚本路径。
+- 不支持环境变量或每仓库/每 worktree 覆盖；全局唯一。
 
 ## 使用示例
 

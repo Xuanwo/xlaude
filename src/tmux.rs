@@ -35,20 +35,24 @@ impl TmuxManager {
         // Create custom tmux config
         let config_path = self.create_custom_config()?;
 
-        // Create detached tmux session with custom config and start claude directly
+        // Create detached tmux session with custom config and start agent directly
+        let (program, args) = crate::utils::resolve_agent_command()?;
+
+        let mut tmux_args: Vec<String> = vec![
+            "-f".into(),
+            config_path.clone(),
+            "new-session".into(),
+            "-d".into(),
+            "-s".into(),
+            session_name.clone(),
+            "-c".into(),
+            work_dir.to_str().unwrap().to_string(),
+        ];
+        tmux_args.push(program);
+        tmux_args.extend(args);
+
         let output = Command::new("tmux")
-            .args([
-                "-f",
-                &config_path,
-                "new-session",
-                "-d",
-                "-s",
-                &session_name,
-                "-c",
-                work_dir.to_str().unwrap(),
-                "claude",
-                "--dangerously-skip-permissions",
-            ])
+            .args(tmux_args.iter().map(|s| s.as_str()))
             .output()
             .context("Failed to create tmux session")?;
 

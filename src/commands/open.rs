@@ -7,6 +7,7 @@ use crate::git::{get_current_branch, get_repo_name, is_base_branch, is_in_worktr
 use crate::input::{drain_stdin, get_command_arg, is_piped_input, smart_confirm, smart_select};
 use crate::state::{WorktreeInfo, XlaudeState};
 use crate::utils::sanitize_branch_name;
+use crate::utils::resolve_agent_command;
 
 pub fn handle_open(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
@@ -17,7 +18,7 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
     if name.is_none() && is_in_worktree()? && !is_base_branch()? {
         // If there's piped input waiting, don't use current worktree detection
         // This allows piped input to override current directory detection
-        if is_piped_input() && std::env::var("XLAUDE_CLAUDE_CMD").as_deref() != Ok("true") {
+        if is_piped_input() && std::env::var("XLAUDE_TEST_MODE").is_err() {
             // There's piped input, so skip current worktree detection
         } else {
             // Get current repository info
@@ -91,14 +92,10 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
                 );
             }
 
-            // Launch Claude in current directory
-            let claude_cmd =
-                std::env::var("XLAUDE_CLAUDE_CMD").unwrap_or_else(|_| "claude".to_string());
-            let mut cmd = Command::new(&claude_cmd);
-
-            if claude_cmd == "claude" {
-                cmd.arg("--dangerously-skip-permissions");
-            }
+            // Launch agent in current directory
+            let (program, args) = resolve_agent_command()?;
+            let mut cmd = Command::new(&program);
+            cmd.args(&args);
 
             cmd.envs(std::env::vars());
 
@@ -108,10 +105,10 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
                 cmd.stdin(Stdio::null());
             }
 
-            let status = cmd.status().context("Failed to launch Claude")?;
+            let status = cmd.status().context("Failed to launch agent")?;
 
             if !status.success() {
-                anyhow::bail!("Claude exited with error");
+                anyhow::bail!("Agent exited with error");
             }
 
             return Ok(());
@@ -166,14 +163,10 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
     // Change to worktree directory and launch Claude
     std::env::set_current_dir(&worktree_info.path).context("Failed to change directory")?;
 
-    // Allow overriding claude command for testing
-    let claude_cmd = std::env::var("XLAUDE_CLAUDE_CMD").unwrap_or_else(|_| "claude".to_string());
-    let mut cmd = Command::new(&claude_cmd);
-
-    // Only add the flag if we're using the real claude command
-    if claude_cmd == "claude" {
-        cmd.arg("--dangerously-skip-permissions");
-    }
+    // Resolve global agent command
+    let (program, args) = resolve_agent_command()?;
+    let mut cmd = Command::new(&program);
+    cmd.args(&args);
 
     // Inherit all environment variables
     cmd.envs(std::env::vars());
@@ -184,10 +177,10 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
         cmd.stdin(Stdio::null());
     }
 
-    let status = cmd.status().context("Failed to launch Claude")?;
+    let status = cmd.status().context("Failed to launch agent")?;
 
     if !status.success() {
-        anyhow::bail!("Claude exited with error");
+        anyhow::bail!("Agent exited with error");
     }
 
     Ok(())

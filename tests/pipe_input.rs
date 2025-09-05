@@ -9,9 +9,19 @@ fn setup_test_repo() -> (TempDir, String, String) {
     let repo_path = temp_dir.path().join("test-repo");
     fs::create_dir(&repo_path).unwrap();
 
-    // Create config directory for xlaude state
+    // Create config directory for xlaude state and default agent
     let config_dir = temp_dir.path().join(".config/xlaude");
     fs::create_dir_all(&config_dir).unwrap();
+    let default_state = serde_json::json!({
+        "worktrees": {},
+        "editor": null,
+        "agent": "true"
+    });
+    fs::write(
+        config_dir.join("state.json"),
+        serde_json::to_string_pretty(&default_state).unwrap(),
+    )
+    .unwrap();
 
     // Initialize git repo
     Command::new("git")
@@ -209,7 +219,7 @@ fn test_yes_doesnt_interfere_with_open() {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_xlaude"));
     cmd.current_dir(&repo_path)
         .env("XLAUDE_CONFIG_DIR", &config_dir)
-        .env("XLAUDE_CLAUDE_CMD", "echo") // Mock claude command
+        // agent is set to "true" in state; no need to override
         .args(["open", "test-yes"])
         .write_stdin("y\ny\ny\n"); // Extra yes responses that should be drained
 

@@ -182,7 +182,16 @@ pub fn is_in_worktree() -> Result<bool> {
     match execute_git(&["rev-parse", "--git-common-dir"]) {
         Ok(common_dir) => {
             let current_git_dir = execute_git(&["rev-parse", "--git-dir"])?;
-            Ok(common_dir != current_git_dir)
+            if common_dir != current_git_dir {
+                return Ok(true);
+            }
+            // Fallback: if inside a git work tree, treat as worktree context
+            // Note: main repo will also return true here, but callers typically
+            // combine with `!is_base_branch()` to exclude base branches.
+            if let Ok(val) = execute_git(&["rev-parse", "--is-inside-work-tree"]) {
+                return Ok(val.trim() == "true");
+            }
+            Ok(false)
         }
         Err(_) => Ok(false),
     }

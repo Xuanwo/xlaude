@@ -20,6 +20,8 @@ pub struct XlaudeState {
     // Key format: "{repo_name}/{worktree_name}"
     pub worktrees: HashMap<String, WorktreeInfo>,
     pub editor: Option<String>,
+    // Global agent command to launch sessions (full command line string)
+    pub agent: Option<String>,
 }
 
 impl XlaudeState {
@@ -99,4 +101,10 @@ pub fn get_config_dir() -> Result<PathBuf> {
 
 fn get_config_path() -> Result<PathBuf> {
     Ok(get_config_dir()?.join("state.json"))
+}
+
+/// Resolve the agent command from state with a sensible default.
+/// Returns the full command line string (not split).
+pub fn get_default_agent() -> String {
+    "claude --dangerously-skip-permissions".to_string()
 }

@@ -266,11 +266,9 @@ pub fn handle_create_in_dir_quiet(
 
     // Ask if user wants to open the worktree (skip in quiet mode)
     if !quiet {
-        // Skip opening in test mode, when explicitly disabled, or in non-interactive mode with mock Claude
+        // Skip opening in test mode or when explicitly disabled
         let should_open = if std::env::var("XLAUDE_TEST_MODE").is_ok()
             || std::env::var("XLAUDE_NO_AUTO_OPEN").is_ok()
-            || (std::env::var("XLAUDE_NON_INTERACTIVE").is_ok()
-                && std::env::var("XLAUDE_CLAUDE_CMD").as_deref() == Ok("true"))
         {
             println!(
                 "  {} To open it, run: {} {}",

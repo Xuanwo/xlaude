@@ -54,3 +54,24 @@ where
 
     result
 }
+
+/// Resolve agent command from state or default, and split into program + args.
+pub fn resolve_agent_command() -> Result<(String, Vec<String>)> {
+    let state = crate::state::XlaudeState::load()?;
+    let cmdline = state
+        .agent
+        .clone()
+        .unwrap_or_else(crate::state::get_default_agent);
+
+    // Use shell-style splitting to handle quotes and spaces.
+    let parts = shell_words::split(&cmdline)
+        .map_err(|e| anyhow::anyhow!("Invalid agent command: {} ({e})", cmdline))?;
+
+    if parts.is_empty() {
+        anyhow::bail!("Agent command is empty");
+    }
+
+    let program = parts[0].clone();
+    let args = parts[1..].to_vec();
+    Ok((program, args))
+}

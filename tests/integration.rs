@@ -29,8 +29,18 @@ impl TestContext {
         // Initialize test git repo
         Self::init_test_repo(&repo_dir);
 
-        // Create config directory
+        // Create config directory and default state with test agent
         fs::create_dir_all(&config_dir).unwrap();
+        let default_state = json!({
+            "worktrees": {},
+            "editor": null,
+            "agent": "true"
+        });
+        fs::write(
+            config_dir.join("state.json"),
+            serde_json::to_string_pretty(&default_state).unwrap(),
+        )
+        .unwrap();
 
         Self {
             temp_dir,
@@ -82,8 +92,8 @@ impl TestContext {
         cmd.current_dir(&self.repo_dir)
             .env("HOME", self.temp_dir.path())
             .env("XLAUDE_CONFIG_DIR", &self.config_dir)
-            // Mock claude command as echo
-            .env("XLAUDE_CLAUDE_CMD", "true")
+            // Run in test mode to avoid auto-open prompts
+            .env("XLAUDE_TEST_MODE", "1")
             // Disable color output for consistent snapshots
             .env("NO_COLOR", "1")
             // Enable non-interactive mode for testing
@@ -98,7 +108,7 @@ impl TestContext {
         cmd.current_dir(dir)
             .env("HOME", self.temp_dir.path())
             .env("XLAUDE_CONFIG_DIR", &self.config_dir)
-            .env("XLAUDE_CLAUDE_CMD", "true")
+            .env("XLAUDE_TEST_MODE", "1")
             .env("NO_COLOR", "1")
             .env("XLAUDE_NON_INTERACTIVE", "1");
 
@@ -160,6 +170,10 @@ fn test_create_with_name() {
 
     // Snapshot test state with redactions for dynamic values
     let mut state = ctx.read_state();
+    // Remove dynamic or config-only fields
+    if let Some(obj) = state.as_object_mut() {
+        obj.remove("agent");
+    }
     // Manually redact dynamic values
     if let Some(worktrees) = state["worktrees"].as_object_mut() {
         for (_, worktree) in worktrees {
@@ -338,6 +352,9 @@ fn test_add_existing_worktree() {
 
     // Verify state with manual redactions
     let mut state = ctx.read_state();
+    if let Some(obj) = state.as_object_mut() {
+        obj.remove("agent");
+    }
     if let Some(worktrees) = state["worktrees"].as_object_mut() {
         for (_, worktree) in worktrees {
             worktree["created_at"] = json!("[TIMESTAMP]");
@@ -455,11 +472,7 @@ fn test_open_specific_worktree() {
     ctx.xlaude(&["create", "to-open"]).assert().success();
 
     // Mock claude command to verify it would be called
-    let output = ctx
-        .xlaude(&["open", "to-open"])
-        .env("XLAUDE_CLAUDE_CMD", "true") // Use 'true' command which always succeeds
-        .assert()
-        .success();
+    let output = ctx.xlaude(&["open", "to-open"]).assert().success();
 
     let stdout = String::from_utf8_lossy(&output.get_output().stdout);
     assert!(stdout.contains("Opening worktree"));

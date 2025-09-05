@@ -15,6 +15,7 @@ This project is designed as a personal workflow tool, tailored to my specific de
 - **Random naming**: Generate memorable names using BIP39 word list
 - **Dashboard mode**: Run multiple Claude instances in background and switch between them (requires tmux)
 - **Pipe input support**: Integrate with Unix tools for automation
+- **Configurable agent**: Use a global command to launch your preferred agent (default: Claude)
 
 ## Installation
 
@@ -84,7 +85,28 @@ xlaude open
 xlaude open
 ```
 
-This switches to the worktree directory and launches Claude with `--dangerously-skip-permissions`. When run without arguments in a worktree directory, it opens the current worktree directly.
+This switches to the worktree directory and launches the configured agent command. By default it is `claude --dangerously-skip-permissions`. When run without arguments in a worktree directory, it opens the current worktree directly.
+
+### Agent configuration
+
+You can configure a single, global agent command used by both `open` and the Dashboard (tmux sessions).
+
+Edit your xlaude state file and set `agent` to a full command line string:
+
+```json
+{
+  "worktrees": { /* ... */ },
+  "editor": "zed",
+  "agent": "codex"
+}
+```
+
+Notes:
+
+- Default when omitted: `claude --dangerously-skip-permissions`.
+- The value is parsed with shell‑style splitting; quoted arguments are supported. Avoid shell pipelines/redirections here — if needed, wrap them in a small script and set `agent` to that script path.
+- The same `agent` is used everywhere (no per‑repo/worktree overrides, no environment variable overrides).
+- State file location (by platform): see the “技术实现” section below.
 
 ### Add existing worktree
 
