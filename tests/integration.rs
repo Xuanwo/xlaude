@@ -367,6 +367,35 @@ fn test_add_existing_worktree() {
 }
 
 #[test]
+fn test_add_duplicate_path_is_rejected() {
+    let ctx = TestContext::new("test-repo");
+
+    // Manually create worktree
+    std::process::Command::new("git")
+        .args(["worktree", "add", "../test-repo-dup", "-b", "dup-branch"])
+        .current_dir(&ctx.repo_dir)
+        .output()
+        .unwrap();
+
+    let manual_worktree = ctx.temp_dir.path().join("test-repo-dup");
+
+    ctx.xlaude_in_dir(&manual_worktree, &["add", "primary"])
+        .assert()
+        .success();
+
+    let assert = ctx
+        .xlaude_in_dir(&manual_worktree, &["add", "secondary"])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    assert!(
+        stderr.contains("already managed"),
+        "expected duplicate path error, got: {}",
+        stderr
+    );
+}
+
+#[test]
 fn test_add_without_name() {
     let ctx = TestContext::new("test-repo");
 

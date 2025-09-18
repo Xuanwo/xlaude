@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use colored::Colorize;
+use std::fs;
 
 use crate::git::{get_current_branch, get_repo_name, is_in_worktree};
 use crate::state::{WorktreeInfo, XlaudeState};
@@ -27,8 +28,29 @@ pub fn handle_add(name: Option<String>) -> Result<()> {
     // Get current directory
     let current_dir = std::env::current_dir()?;
 
-    // Check if already managed
+    // Load state
     let mut state = XlaudeState::load()?;
+
+    let normalize_path = |path: &std::path::Path| -> std::path::PathBuf {
+        fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+    };
+    let current_dir_key = normalize_path(&current_dir);
+
+    // Check if this path is already managed under another worktree
+    if let Some(existing) = state
+        .worktrees
+        .values()
+        .find(|info| normalize_path(&info.path) == current_dir_key)
+    {
+        anyhow::bail!(
+            "Current directory '{}' is already managed by xlaude as '{}/{}'",
+            current_dir.display(),
+            existing.repo_name,
+            existing.name
+        );
+    }
+
+    // Check if already managed under the same name
     let key = XlaudeState::make_key(&repo_name, &worktree_name);
     if state.worktrees.contains_key(&key) {
         anyhow::bail!(
