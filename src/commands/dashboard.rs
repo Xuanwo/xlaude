@@ -19,6 +19,12 @@ use crate::claude_status::{ClaudeStatus, ClaudeStatusDetector};
 use crate::state::XlaudeState;
 use crate::tmux::{SessionInfo, TmuxManager};
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum ConfigField {
+    Editor,
+    Agent,
+}
+
 pub struct Dashboard {
     tmux: TmuxManager,
     state: XlaudeState,
@@ -39,6 +45,8 @@ pub struct Dashboard {
     config_mode: bool,
     config_editor_input: String,
     last_key_event: Option<(KeyEvent, std::time::Instant)>, // Track last key event for deduplication
+    config_agent_input: String,
+    config_selected_field: ConfigField, // Which field is currently selected
 }
 
 struct WorktreeDisplay {
@@ -75,6 +83,8 @@ impl Dashboard {
             config_mode: false,
             config_editor_input: String::new(),
             last_key_event: None,
+            config_agent_input: String::new(),
+            config_selected_field: ConfigField::Editor,
         };
 
         dashboard.refresh_worktrees();
@@ -364,26 +374,50 @@ impl Dashboard {
                 KeyCode::Esc => {
                     // Cancel config mode without saving
                     self.config_mode = false;
-                    // Restore original editor value
+                    // Restore original values
                     self.config_editor_input = self.state.editor.clone().unwrap_or_default();
+                    self.config_agent_input = self.state.agent.clone().unwrap_or_default();
                 }
                 KeyCode::Enter => {
-                    // Save configuration
+                    // Save all configurations
                     let editor = self.config_editor_input.trim();
+                    let agent = self.config_agent_input.trim();
+
                     if !editor.is_empty() {
                         self.state.editor = Some(editor.to_string());
-                        self.state.save()?;
-                        self.status_message = Some(format!("✅ Editor set to: {}", editor));
-                        self.status_message_timer = 5;
                     }
+                    if !agent.is_empty() {
+                        self.state.agent = Some(agent.to_string());
+                    }
+
+                    self.state.save()?;
+                    self.status_message = Some("✅ Configuration saved".to_string());
+                    self.status_message_timer = 5;
                     self.config_mode = false;
                 }
-                KeyCode::Backspace => {
-                    self.config_editor_input.pop();
+                KeyCode::Tab => {
+                    // Switch between config fields
+                    self.config_selected_field = match self.config_selected_field {
+                        ConfigField::Editor => ConfigField::Agent,
+                        ConfigField::Agent => ConfigField::Editor,
+                    };
                 }
-                KeyCode::Char(c) => {
-                    self.config_editor_input.push(c);
-                }
+                KeyCode::Backspace => match self.config_selected_field {
+                    ConfigField::Editor => {
+                        self.config_editor_input.pop();
+                    }
+                    ConfigField::Agent => {
+                        self.config_agent_input.pop();
+                    }
+                },
+                KeyCode::Char(c) => match self.config_selected_field {
+                    ConfigField::Editor => {
+                        self.config_editor_input.push(c);
+                    }
+                    ConfigField::Agent => {
+                        self.config_agent_input.push(c);
+                    }
+                },
                 _ => {}
             }
             return Ok(InputResult::Continue);
@@ -507,6 +541,8 @@ impl Dashboard {
                 // Enter config mode
                 self.config_mode = true;
                 self.config_editor_input = self.state.editor.clone().unwrap_or_default();
+                self.config_agent_input = self.state.agent.clone().unwrap_or_default();
+                self.config_selected_field = ConfigField::Editor;
             }
             _ => {}
         }
@@ -862,6 +898,11 @@ impl Dashboard {
             ]),
             Line::from(vec![
                 Span::raw("  "),
+                Span::styled("c", Style::default().fg(Color::Yellow)),
+                Span::raw("      Configure settings"),
+            ]),
+            Line::from(vec![
+                Span::raw("  "),
                 Span::styled("q", Style::default().fg(Color::Yellow)),
                 Span::raw("      Quit dashboard"),
             ]),
@@ -954,15 +995,15 @@ impl Dashboard {
     }
 
     fn render_config_dialog(&self, f: &mut Frame) {
-        // Calculate dialog area (centered, 60% width, 40% height)
-        let area = centered_rect(60, 40, f.area());
+        // Calculate dialog area (centered, 60% width, 50% height)
+        let area = centered_rect(60, 50, f.area());
 
         // Clear the dialog area
         let clear = ratatui::widgets::Clear;
         f.render_widget(clear, area);
 
         // Create the dialog content
-        let lines = vec![
+        let mut lines = vec![
             Line::from(""),
             Line::from(Span::styled(
                 "Configuration",
@@ -971,13 +1012,20 @@ impl Dashboard {
             Line::from(""),
             Line::from("Editor command for opening projects:"),
             Line::from(""),
-            Line::from(vec![
-                Span::raw("  "),
-                Span::styled(
-                    format!("{}_", self.config_editor_input),
-                    Style::default().bg(Color::DarkGray).fg(Color::White),
-                ),
-            ]),
+        ];
+
+        // Editor input field with selection highlighting
+        let editor_style = if self.config_selected_field == ConfigField::Editor {
+            Style::default().bg(Color::White).fg(Color::Black)
+        } else {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        };
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled(format!("{}_", self.config_editor_input), editor_style),
+        ]));
+
+        lines.extend(vec![
             Line::from(""),
             Line::from(Span::styled(
                 "Examples: zed, code, vim, nvim, subl, 'code -n'",
@@ -986,16 +1034,40 @@ impl Dashboard {
                     .add_modifier(Modifier::ITALIC),
             )),
             Line::from(""),
-            Line::from("This editor will be used when pressing Ctrl+O in tmux sessions."),
+            Line::from("Agent command for launching sessions:"),
+            Line::from(""),
+        ]);
+
+        // Agent input field with selection highlighting
+        let agent_style = if self.config_selected_field == ConfigField::Agent {
+            Style::default().bg(Color::White).fg(Color::Black)
+        } else {
+            Style::default().bg(Color::DarkGray).fg(Color::White)
+        };
+        lines.push(Line::from(vec![
+            Span::raw("  "),
+            Span::styled(format!("{}_", self.config_agent_input), agent_style),
+        ]));
+
+        lines.extend(vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "Examples: claude, codex, 'claude --dangerously-skip-permissions'",
+                Style::default()
+                    .fg(Color::DarkGray)
+                    .add_modifier(Modifier::ITALIC),
+            )),
             Line::from(""),
             Line::from(""),
             Line::from(vec![
+                Span::styled("Tab", Style::default().fg(Color::Yellow)),
+                Span::raw(" switch field  "),
                 Span::styled("Enter", Style::default().fg(Color::Green)),
-                Span::raw(" to save  "),
+                Span::raw(" save  "),
                 Span::styled("Esc", Style::default().fg(Color::Red)),
-                Span::raw(" to cancel"),
+                Span::raw(" cancel"),
             ]),
-        ];
+        ]);
 
         let dialog = Paragraph::new(lines)
             .block(
