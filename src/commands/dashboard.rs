@@ -383,15 +383,38 @@ impl Dashboard {
                     let editor = self.config_editor_input.trim();
                     let agent = self.config_agent_input.trim();
 
-                    if !editor.is_empty() {
-                        self.state.editor = Some(editor.to_string());
-                    }
-                    if !agent.is_empty() {
-                        self.state.agent = Some(agent.to_string());
-                    }
+                    // Update editor configuration (set to None if empty)
+                    self.state.editor = if editor.is_empty() {
+                        None
+                    } else {
+                        Some(editor.to_string())
+                    };
+
+                    // Update agent configuration (set to None if empty, will use default)
+                    self.state.agent = if agent.is_empty() {
+                        None
+                    } else {
+                        Some(agent.to_string())
+                    };
 
                     self.state.save()?;
-                    self.status_message = Some("✅ Configuration saved".to_string());
+
+                    // Create detailed status message
+                    let mut status_parts = Vec::new();
+                    if !editor.is_empty() {
+                        status_parts.push(format!("editor: {}", editor));
+                    }
+                    if !agent.is_empty() {
+                        status_parts.push(format!("agent: {}", agent));
+                    }
+
+                    let status_msg = if status_parts.is_empty() {
+                        "✅ Configuration cleared (using defaults)".to_string()
+                    } else {
+                        format!("✅ Configuration saved ({})", status_parts.join(", "))
+                    };
+
+                    self.status_message = Some(status_msg);
                     self.status_message_timer = 5;
                     self.config_mode = false;
                 }
