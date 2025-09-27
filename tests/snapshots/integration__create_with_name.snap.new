@@ -1,0 +1,8 @@
+---
+source: tests/integration.rs
+assertion_line: 169
+expression: redacted
+---
+✨ Creating worktree 'feature-x' with new branch 'feature-x'...
+✅ Worktree created at: D:\Temp\.tmpedJbjK\test-repo-feature-x
+  💡 To open it, run: xlaude open feature-x

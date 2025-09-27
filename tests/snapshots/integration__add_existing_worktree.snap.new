@@ -1,0 +1,8 @@
+---
+source: tests/integration.rs
+assertion_line: 351
+expression: redacted
+---
+➕ Adding worktree 'manual' to xlaude management...
+✅ Worktree 'manual' added successfully
+  Path: D:\Temp\.tmpDmRSn6\test-repo-manual

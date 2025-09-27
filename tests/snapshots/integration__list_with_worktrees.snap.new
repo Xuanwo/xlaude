@@ -1,0 +1,14 @@
+---
+source: tests/integration.rs
+assertion_line: 253
+expression: redacted_stdout
+---
+📋 Active worktrees:
+
+  📦 test-repo
+    • feature-a
+      Path: D:\Temp\.tmpJFXpkw\test-repo-feature-a
+      Created: [TIMESTAMP]
+    • feature-b
+      Path: D:\Temp\.tmpJFXpkw\test-repo-feature-b
+      Created: [TIMESTAMP]
