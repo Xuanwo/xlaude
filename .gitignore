@@ -1,3 +1,7 @@
 /target
 **/*.rs.bk
 Cargo.lock
+
+# Claude Code edit backups
+.edit_backup/
+**/.edit_backup/
