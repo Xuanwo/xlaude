@@ -1,9 +1,9 @@
-use anyhow::Result;
-use std::collections::HashSet;
+use super::state::{DashboardState, WorktreeDisplay};
 use crate::claude_status::ClaudeStatus;
 use crate::state::XlaudeState;
 use crate::tmux::{SessionInfo, TmuxManager};
-use super::state::{DashboardState, WorktreeDisplay};
+use anyhow::Result;
+use std::collections::HashSet;
 
 pub struct WorktreeManager {
     tmux: TmuxManager,
@@ -45,7 +45,8 @@ impl WorktreeManager {
             });
         }
 
-        state.worktrees
+        state
+            .worktrees
             .sort_by(|a, b| a.repo.cmp(&b.repo).then(a.name.cmp(&b.name)));
     }
 
@@ -71,13 +72,11 @@ impl WorktreeManager {
                     .iter()
                     .any(|name| name.replace(['-', '.'], "_") == session.project);
 
-                if !session_matches_any {
-                    if let Err(e) = self.tmux.kill_session(&session.project) {
-                        eprintln!(
-                            "Failed to clean up orphaned tmux session {}: {}",
-                            session.project, e
-                        );
-                    }
+                if !session_matches_any && let Err(e) = self.tmux.kill_session(&session.project) {
+                    eprintln!(
+                        "Failed to clean up orphaned tmux session {}: {}",
+                        session.project, e
+                    );
                 }
             }
         }

@@ -1,3 +1,4 @@
+use super::state::{DashboardMode, DashboardState};
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -5,7 +6,6 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph},
 };
-use super::state::{DashboardMode, DashboardState};
 
 pub fn render_dialogs(f: &mut Frame, state: &DashboardState) {
     match &state.mode {

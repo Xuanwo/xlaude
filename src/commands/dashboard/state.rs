@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use ratatui::widgets::ListState;
 use crate::claude_status::{ClaudeStatus, ClaudeStatusDetector};
+use ratatui::widgets::ListState;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct WorktreeDisplay {
@@ -15,13 +15,8 @@ pub struct WorktreeDisplay {
 pub enum DashboardMode {
     Normal,
     Help,
-    Create {
-        input: String,
-        repo: Option<String>,
-    },
-    Config {
-        editor_input: String,
-    },
+    Create { input: String, repo: Option<String> },
+    Config { editor_input: String },
 }
 
 impl Default for DashboardMode {
@@ -120,12 +115,11 @@ impl DashboardState {
 
     pub fn find_worktree_by_name(&self, name: &str) -> Option<usize> {
         for (idx, mapped_idx) in self.list_index_map.iter().enumerate() {
-            if let Some(worktree_idx) = mapped_idx {
-                if let Some(worktree) = self.worktrees.get(*worktree_idx) {
-                    if worktree.name == name {
-                        return Some(idx);
-                    }
-                }
+            if let Some(worktree_idx) = mapped_idx
+                && let Some(worktree) = self.worktrees.get(*worktree_idx)
+                && worktree.name == name
+            {
+                return Some(idx);
             }
         }
         None

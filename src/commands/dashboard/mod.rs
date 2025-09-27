@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use crossterm::{
     event::{self, Event, KeyEvent},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
@@ -17,7 +17,7 @@ mod state;
 mod ui;
 mod worktree_manager;
 
-use input::{handle_input, InputResult};
+use input::{InputResult, handle_input};
 use state::DashboardState;
 use worktree_manager::WorktreeManager;
 
@@ -85,13 +85,12 @@ impl Dashboard {
         let result = handle_input(key, &mut self.state, &mut self.xlaude_state)?;
 
         // Handle actions that require worktree manager
-        if let crossterm::event::KeyCode::Char('d' | 'D') = key.code {
-            if let Some(worktree) = self.state.get_selected_worktree() {
-                if worktree.has_session {
-                    self.worktree_manager.kill_session(&worktree.name)?;
-                    self.refresh()?;
-                }
-            }
+        if let crossterm::event::KeyCode::Char('d' | 'D') = key.code
+            && let Some(worktree) = self.state.get_selected_worktree()
+            && worktree.has_session
+        {
+            self.worktree_manager.kill_session(&worktree.name)?;
+            self.refresh()?;
         }
 
         if let crossterm::event::KeyCode::Char('r' | 'R') = key.code {
@@ -144,11 +143,7 @@ impl Dashboard {
         Ok(())
     }
 
-    fn handle_create_worktree(
-        &mut self,
-        name: Option<String>,
-        repo: Option<String>,
-    ) -> Result<()> {
+    fn handle_create_worktree(&mut self, name: Option<String>, repo: Option<String>) -> Result<()> {
         let repo_path = if let Some(repo_name) = &repo {
             self.find_repo_path(repo_name)
         } else {
@@ -175,14 +170,13 @@ impl Dashboard {
     }
 
     fn find_repo_path(&self, repo_name: &str) -> Option<std::path::PathBuf> {
-        if let Some(worktree) = self.state.worktrees.iter().find(|w| w.repo == *repo_name) {
-            if let Some(info) = self.xlaude_state.worktrees.get(&worktree.key) {
-                if let Some(parent) = info.path.parent() {
-                    let path = parent.join(repo_name);
-                    if path.exists() {
-                        return Some(path);
-                    }
-                }
+        if let Some(worktree) = self.state.worktrees.iter().find(|w| w.repo == *repo_name)
+            && let Some(info) = self.xlaude_state.worktrees.get(&worktree.key)
+            && let Some(parent) = info.path.parent()
+        {
+            let path = parent.join(repo_name);
+            if path.exists() {
+                return Some(path);
             }
         }
         None
@@ -192,11 +186,8 @@ impl Dashboard {
         self.xlaude_state = XlaudeState::load()?;
         let sessions = self.worktree_manager.list_sessions().unwrap_or_default();
 
-        self.worktree_manager.refresh_worktrees(
-            &mut self.state,
-            &self.xlaude_state,
-            &sessions,
-        );
+        self.worktree_manager
+            .refresh_worktrees(&mut self.state, &self.xlaude_state, &sessions);
 
         let updated_sessions = self.worktree_manager.list_sessions().unwrap_or_default();
         self.worktree_manager.update_claude_statuses(

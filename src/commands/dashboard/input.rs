@@ -1,7 +1,7 @@
+use super::state::{DashboardMode, DashboardState};
+use crate::state::XlaudeState;
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
-use crate::state::XlaudeState;
-use super::state::{DashboardMode, DashboardState};
 
 pub enum InputResult {
     Exit,
@@ -24,7 +24,7 @@ pub fn handle_input(
             let result = handle_config_input(key, &mut editor_input, xlaude_state)?;
             if matches!(result, InputResult::Exit) {
                 if matches!(key.code, KeyCode::Enter) {
-                    state.set_status_message(format!("✅ Editor configured"));
+                    state.set_status_message("✅ Editor configured".to_string());
                 }
                 state.mode = DashboardMode::Normal;
                 Ok(InputResult::Continue)
@@ -50,9 +50,7 @@ pub fn handle_input(
                 }
             }
         }
-        DashboardMode::Normal => {
-            handle_normal_input(key, state)
-        }
+        DashboardMode::Normal => handle_normal_input(key, state),
     }
 }
 
@@ -84,10 +82,7 @@ fn handle_config_input(
     Ok(InputResult::Continue)
 }
 
-fn handle_create_input(
-    key: KeyEvent,
-    input: &mut String,
-) -> Result<InputResult> {
+fn handle_create_input(key: KeyEvent, input: &mut String) -> Result<InputResult> {
     match key.code {
         KeyCode::Esc => {
             return Ok(InputResult::Exit);
@@ -145,11 +140,11 @@ fn handle_normal_input(key: KeyEvent, state: &mut DashboardState) -> Result<Inpu
             };
         }
         KeyCode::Char('d' | 'D') => {
-            if let Some(worktree) = state.get_selected_worktree() {
-                if worktree.has_session {
-                    // This will be handled by the caller
-                    // We just mark that we want to delete this session
-                }
+            if let Some(worktree) = state.get_selected_worktree()
+                && worktree.has_session
+            {
+                // This will be handled by the caller
+                // We just mark that we want to delete this session
             }
         }
         KeyCode::Char('r' | 'R') => {

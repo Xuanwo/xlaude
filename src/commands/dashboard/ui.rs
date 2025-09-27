@@ -1,3 +1,6 @@
+use super::dialogs::render_dialogs;
+use super::state::{DashboardMode, DashboardState};
+use crate::tmux::SessionInfo;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -5,9 +8,6 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
 };
-use crate::tmux::SessionInfo;
-use super::state::{DashboardMode, DashboardState};
-use super::dialogs::render_dialogs;
 
 pub fn render(f: &mut Frame, state: &mut DashboardState, sessions: &[SessionInfo]) {
     if matches!(state.mode, DashboardMode::Help) {
@@ -100,41 +100,44 @@ fn render_project_list(f: &mut Frame, state: &mut DashboardState, area: Rect) {
 }
 
 fn render_preview(f: &mut Frame, state: &DashboardState, sessions: &[SessionInfo], area: Rect) {
-    let worktree_idx = state.list_index_map.get(state.selected).and_then(|idx| *idx);
+    let worktree_idx = state
+        .list_index_map
+        .get(state.selected)
+        .and_then(|idx| *idx);
 
-    if let Some(idx) = worktree_idx {
-        if let Some(worktree) = state.worktrees.get(idx) {
-            let mut lines = vec![
-                Line::from(vec![
-                    Span::styled("Project: ", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(&worktree.name),
-                ]),
-                Line::from(vec![
-                    Span::styled(
-                        "Repository: ",
-                        Style::default().add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw(&worktree.repo),
-                ]),
-                Line::from(""),
-            ];
+    if let Some(idx) = worktree_idx
+        && let Some(worktree) = state.worktrees.get(idx)
+    {
+        let mut lines = vec![
+            Line::from(vec![
+                Span::styled("Project: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(&worktree.name),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "Repository: ",
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(&worktree.repo),
+            ]),
+            Line::from(""),
+        ];
 
-            let safe_name = worktree.name.replace(['-', '.'], "_");
-            if let Some(session) = sessions
-                .iter()
-                .find(|s| s.project == safe_name || s.project == worktree.name)
-            {
-                render_session_info(&mut lines, session, worktree, state, area);
-            } else {
-                render_no_session(&mut lines);
-            }
-
-            let preview = Paragraph::new(lines)
-                .block(Block::default().borders(Borders::ALL).title(" Details "))
-                .wrap(Wrap { trim: true });
-
-            f.render_widget(preview, area);
+        let safe_name = worktree.name.replace(['-', '.'], "_");
+        if let Some(session) = sessions
+            .iter()
+            .find(|s| s.project == safe_name || s.project == worktree.name)
+        {
+            render_session_info(&mut lines, session, worktree, state, area);
+        } else {
+            render_no_session(&mut lines);
         }
+
+        let preview = Paragraph::new(lines)
+            .block(Block::default().borders(Borders::ALL).title(" Details "))
+            .wrap(Wrap { trim: true });
+
+        f.render_widget(preview, area);
     }
 }
 
@@ -188,17 +191,17 @@ fn render_session_info(
 
     lines.push(Line::from(""));
 
-    if !session.is_attached {
-        if let Some(preview) = state.preview_cache.get(&worktree.name) {
-            lines.push(Line::from(Span::styled(
-                "Recent output:",
-                Style::default().add_modifier(Modifier::BOLD),
-            )));
-            lines.push(Line::from("─".repeat(area.width as usize - 2)));
+    if !session.is_attached
+        && let Some(preview) = state.preview_cache.get(&worktree.name)
+    {
+        lines.push(Line::from(Span::styled(
+            "Recent output:",
+            Style::default().add_modifier(Modifier::BOLD),
+        )));
+        lines.push(Line::from("─".repeat(area.width as usize - 2)));
 
-            for line in preview.lines().take(10) {
-                lines.push(Line::from(line.to_string()));
-            }
+        for line in preview.lines().take(10) {
+            lines.push(Line::from(line.to_string()));
         }
     }
 }
