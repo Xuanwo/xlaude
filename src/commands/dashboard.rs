@@ -342,16 +342,15 @@ impl Dashboard {
     fn handle_input(&mut self, key: KeyEvent) -> Result<InputResult> {
         // Check for duplicate key events within a short time window (50ms)
         let now = std::time::Instant::now();
-        if let Some((last_key, last_time)) = &self.last_key_event {
-            if key.code == last_key.code 
-                && key.modifiers == last_key.modifiers 
-                && now.duration_since(*last_time).as_millis() < 50 
-            {
-                // This is likely a duplicate event, ignore it
-                return Ok(InputResult::Continue);
-            }
+        if let Some((last_key, last_time)) = &self.last_key_event
+            && key.code == last_key.code
+            && key.modifiers == last_key.modifiers
+            && now.duration_since(*last_time).as_millis() < 50
+        {
+            // This is likely a duplicate event, ignore it
+            return Ok(InputResult::Continue);
         }
-        
+
         // Update last key event
         self.last_key_event = Some((key, now));
         if self.show_help {
