@@ -36,7 +36,7 @@ impl TmuxManager {
         let config_path = self.create_custom_config()?;
 
         // Create detached tmux session with custom config and start agent directly
-        let (program, args) = crate::utils::resolve_agent_command()?;
+        let (program, args) = crate::utils::prepare_agent_command(work_dir)?;
 
         let mut tmux_args: Vec<String> = vec![
             "-f".into(),

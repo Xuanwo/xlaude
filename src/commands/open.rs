@@ -6,8 +6,7 @@ use std::process::{Command, Stdio};
 use crate::git::{get_current_branch, get_repo_name, is_base_branch, is_in_worktree};
 use crate::input::{drain_stdin, get_command_arg, is_piped_input, smart_confirm, smart_select};
 use crate::state::{WorktreeInfo, XlaudeState};
-use crate::utils::resolve_agent_command;
-use crate::utils::sanitize_branch_name;
+use crate::utils::{prepare_agent_command, sanitize_branch_name};
 
 pub fn handle_open(name: Option<String>) -> Result<()> {
     let mut state = XlaudeState::load()?;
@@ -93,7 +92,7 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
             }
 
             // Launch agent in current directory
-            let (program, args) = resolve_agent_command()?;
+            let (program, args) = prepare_agent_command(&current_dir)?;
             let mut cmd = Command::new(&program);
             cmd.args(&args);
 
@@ -164,7 +163,7 @@ pub fn handle_open(name: Option<String>) -> Result<()> {
     std::env::set_current_dir(&worktree_info.path).context("Failed to change directory")?;
 
     // Resolve global agent command
-    let (program, args) = resolve_agent_command()?;
+    let (program, args) = prepare_agent_command(&worktree_info.path)?;
     let mut cmd = Command::new(&program);
     cmd.args(&args);
 

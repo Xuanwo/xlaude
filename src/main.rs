@@ -4,6 +4,7 @@ use clap_complete::Shell;
 
 mod claude;
 mod claude_status;
+mod codex;
 mod commands;
 mod completions;
 mod git;

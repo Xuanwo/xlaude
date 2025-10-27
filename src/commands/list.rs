@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use crate::claude::get_claude_sessions;
+use crate::codex;
 use crate::state::XlaudeState;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,11 +23,55 @@ struct JsonWorktreeInfo {
     repo_name: String,
     created_at: DateTime<Utc>,
     sessions: Vec<JsonSessionInfo>,
+    codex_sessions: Vec<JsonCodexSessionInfo>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 struct JsonOutput {
     worktrees: Vec<JsonWorktreeInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct JsonCodexSessionInfo {
+    id: String,
+    last_user_message: Option<String>,
+    last_timestamp: Option<DateTime<Utc>>,
+    time_ago: String,
+}
+
+fn format_time_ago(timestamp: Option<DateTime<Utc>>) -> String {
+    timestamp.map_or_else(
+        || "unknown".to_string(),
+        |ts| {
+            let now = Utc::now();
+            let diff = now.signed_duration_since(ts);
+
+            if diff.num_minutes() < 60 {
+                format!("{}m ago", diff.num_minutes())
+            } else if diff.num_hours() < 24 {
+                format!("{}h ago", diff.num_hours())
+            } else {
+                format!("{}d ago", diff.num_days())
+            }
+        },
+    )
+}
+
+fn format_message_preview(message: &str, limit: usize) -> String {
+    if message.len() <= limit {
+        return message.to_string();
+    }
+
+    let mut truncated = String::new();
+    let safe_limit = limit.saturating_sub(3);
+    for ch in message.chars() {
+        if truncated.len() + ch.len_utf8() > safe_limit {
+            break;
+        }
+        truncated.push(ch);
+    }
+    truncated.push_str("...");
+    truncated
 }
 
 pub fn handle_list(json: bool) -> Result<()> {
@@ -47,31 +92,24 @@ pub fn handle_list(json: bool) -> Result<()> {
         let mut worktrees = Vec::new();
 
         for info in state.worktrees.values() {
-            let sessions = get_claude_sessions(&info.path);
-            let json_sessions: Vec<JsonSessionInfo> = sessions
+            let claude_sessions = get_claude_sessions(&info.path);
+            let json_sessions: Vec<JsonSessionInfo> = claude_sessions
                 .into_iter()
-                .map(|session| {
-                    let time_ago = session.last_timestamp.as_ref().map_or_else(
-                        || "unknown".to_string(),
-                        |ts| {
-                            let now = Utc::now();
-                            let diff = now.signed_duration_since(*ts);
+                .map(|session| JsonSessionInfo {
+                    last_user_message: session.last_user_message,
+                    last_timestamp: session.last_timestamp,
+                    time_ago: format_time_ago(session.last_timestamp),
+                })
+                .collect();
 
-                            if diff.num_minutes() < 60 {
-                                format!("{}m ago", diff.num_minutes())
-                            } else if diff.num_hours() < 24 {
-                                format!("{}h ago", diff.num_hours())
-                            } else {
-                                format!("{}d ago", diff.num_days())
-                            }
-                        },
-                    );
-
-                    JsonSessionInfo {
-                        last_user_message: session.last_user_message,
-                        last_timestamp: session.last_timestamp,
-                        time_ago,
-                    }
+            let (codex_sessions, _) = codex::recent_sessions(&info.path, usize::MAX)?;
+            let json_codex_sessions: Vec<JsonCodexSessionInfo> = codex_sessions
+                .into_iter()
+                .map(|session| JsonCodexSessionInfo {
+                    id: session.id,
+                    last_user_message: session.last_user_message,
+                    last_timestamp: session.last_timestamp,
+                    time_ago: format_time_ago(session.last_timestamp),
                 })
                 .collect();
 
@@ -82,6 +120,7 @@ pub fn handle_list(json: bool) -> Result<()> {
                 repo_name: info.repo_name.clone(),
                 created_at: info.created_at,
                 sessions: json_sessions,
+                codex_sessions: json_codex_sessions,
             });
         }
 
@@ -125,44 +164,16 @@ pub fn handle_list(json: bool) -> Result<()> {
                 );
 
                 // Get Claude sessions for this worktree
-                let sessions = get_claude_sessions(&info.path);
-                if !sessions.is_empty() {
+                let claude_sessions = get_claude_sessions(&info.path);
+                if !claude_sessions.is_empty() {
                     println!(
                         "      {} {} session(s):",
                         "Claude:".bright_black(),
-                        sessions.len()
+                        claude_sessions.len()
                     );
-                    for session in sessions.iter().take(3) {
-                        // Format time
-                        let time_str = session.last_timestamp.as_ref().map_or_else(
-                            || "unknown".to_string(),
-                            |ts| {
-                                let now = Utc::now();
-                                let diff = now.signed_duration_since(*ts);
-
-                                if diff.num_minutes() < 60 {
-                                    format!("{}m ago", diff.num_minutes())
-                                } else if diff.num_hours() < 24 {
-                                    format!("{}h ago", diff.num_hours())
-                                } else {
-                                    format!("{}d ago", diff.num_days())
-                                }
-                            },
-                        );
-
-                        // Truncate message if too long
-                        let message = if session.last_user_message.len() > 60 {
-                            let mut truncated = String::new();
-                            for ch in session.last_user_message.chars() {
-                                if truncated.len() + ch.len_utf8() > 57 {
-                                    break;
-                                }
-                                truncated.push(ch);
-                            }
-                            format!("{truncated}...")
-                        } else {
-                            session.last_user_message.clone()
-                        };
+                    for session in claude_sessions.iter().take(3) {
+                        let time_str = format_time_ago(session.last_timestamp);
+                        let message = format_message_preview(&session.last_user_message, 60);
 
                         println!(
                             "        {} {} {}",
@@ -171,11 +182,42 @@ pub fn handle_list(json: bool) -> Result<()> {
                             message.bright_black()
                         );
                     }
-                    if sessions.len() > 3 {
+                    if claude_sessions.len() > 3 {
                         println!(
                             "        {} ... and {} more",
                             "-".bright_black(),
-                            sessions.len() - 3
+                            claude_sessions.len() - 3
+                        );
+                    }
+                }
+
+                let (codex_sessions, codex_total) = codex::recent_sessions(&info.path, 3)?;
+                if codex_total > 0 {
+                    println!(
+                        "      {} {} session(s):",
+                        "Codex:".bright_black(),
+                        codex_total
+                    );
+                    for session in &codex_sessions {
+                        let time_str = format_time_ago(session.last_timestamp);
+                        let message = session
+                            .last_user_message
+                            .as_deref()
+                            .map(|msg| format_message_preview(msg, 60))
+                            .unwrap_or_else(|| "(no user message)".to_string());
+
+                        println!(
+                            "        {} {} {}",
+                            "-".bright_black(),
+                            time_str.bright_black(),
+                            message.bright_black()
+                        );
+                    }
+                    if codex_total > codex_sessions.len() {
+                        println!(
+                            "        {} ... and {} more",
+                            "-".bright_black(),
+                            codex_total - codex_sessions.len()
                         );
                     }
                 }
