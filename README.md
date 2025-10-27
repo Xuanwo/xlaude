@@ -106,7 +106,7 @@ Notes:
 - Default when omitted: `claude --dangerously-skip-permissions`.
 - The value is parsed with shell‑style splitting; quoted arguments are supported. Avoid shell pipelines/redirections here — if needed, wrap them in a small script and set `agent` to that script path.
 - The same `agent` is used everywhere (no per‑repo/worktree overrides, no environment variable overrides).
-- State file location (by platform): see the “技术实现” section below.
+- State file location (by platform): see the “Configuration” section below.
 
 #### Using Codex
 
