@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use rand::{RngCore, SeedableRng};
 use std::path::Path;
 
@@ -9,7 +9,7 @@ pub fn generate_random_name() -> Result<String> {
         let seed: u64 = seed_str.parse().unwrap_or(42);
         Box::new(rand::rngs::StdRng::seed_from_u64(seed)) as Box<dyn RngCore>
     } else {
-        Box::new(rand::thread_rng()) as Box<dyn RngCore>
+        Box::new(rand::rng()) as Box<dyn RngCore>
     };
 
     // Generate 128 bits of entropy for a 12-word mnemonic
@@ -24,7 +24,8 @@ pub fn generate_random_name() -> Result<String> {
         let seed: u64 = seed_str.parse().unwrap_or(42);
         rand::rngs::StdRng::seed_from_u64(seed)
     } else {
-        rand::rngs::StdRng::from_entropy()
+        let mut entropy_rng = rand::rng();
+        rand::rngs::StdRng::from_rng(&mut entropy_rng)
     };
 
     words
