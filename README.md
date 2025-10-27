@@ -108,6 +108,20 @@ Notes:
 - The same `agent` is used everywhere (no per‑repo/worktree overrides, no environment variable overrides).
 - State file location (by platform): see the “技术实现” section below.
 
+#### Using Codex
+
+To launch Codex instead of Claude, update the state file (on macOS: `~/Library/Application Support/com.xuanwo.xlaude/state.json`) and set:
+
+```json
+{
+  "agent": "codex --dangerously-bypass-approvals-and-sandbox"
+}
+```
+
+When the program name is `codex` and no positional arguments are provided, xlaude automatically appends `resume <session-id>` with the most recent Codex session whose working directory matches the selected worktree. This lets you reopen the previous conversation without manual steps.
+
+Codex session logs are discovered under `~/.codex/sessions` by default. If you store sessions elsewhere, export `XLAUDE_CODEX_SESSIONS_DIR=/custom/path` before running `xlaude` so the resume logic can locate them.
+
 ### Add existing worktree
 
 ```bash
