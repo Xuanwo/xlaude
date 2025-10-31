@@ -99,6 +99,10 @@ pub fn get_config_dir() -> Result<PathBuf> {
     Ok(proj_dirs.config_dir().to_path_buf())
 }
 
+pub fn get_state_path() -> Result<PathBuf> {
+    get_config_path()
+}
+
 fn get_config_path() -> Result<PathBuf> {
     Ok(get_config_dir()?.join("state.json"))
 }

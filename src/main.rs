@@ -14,8 +14,8 @@ mod tmux;
 mod utils;
 
 use commands::{
-    handle_add, handle_clean, handle_create, handle_delete, handle_dir, handle_list, handle_open,
-    handle_rename,
+    handle_add, handle_clean, handle_config, handle_create, handle_delete, handle_dir, handle_list,
+    handle_open, handle_rename,
 };
 
 #[derive(Parser)]
@@ -83,6 +83,8 @@ enum Commands {
     },
     /// Launch interactive dashboard for managing Claude sessions
     Dashboard,
+    /// Open the xlaude state file in $EDITOR
+    Config,
 }
 
 fn main() -> Result<()> {
@@ -100,5 +102,6 @@ fn main() -> Result<()> {
         Commands::Completions { shell } => completions::handle_completions(shell),
         Commands::CompleteWorktrees { format } => commands::handle_complete_worktrees(&format),
         Commands::Dashboard => commands::handle_dashboard(),
+        Commands::Config => handle_config(),
     }
 }

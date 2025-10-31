@@ -1,6 +1,7 @@
 pub mod add;
 pub mod clean;
 pub mod complete;
+pub mod config;
 pub mod create;
 pub mod dashboard;
 pub mod delete;
@@ -12,6 +13,7 @@ pub mod rename;
 pub use add::handle_add;
 pub use clean::handle_clean;
 pub use complete::handle_complete_worktrees;
+pub use config::handle_config;
 pub use create::handle_create;
 pub use dashboard::handle_dashboard;
 pub use delete::handle_delete;
