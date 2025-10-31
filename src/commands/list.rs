@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, Utc};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -160,7 +160,9 @@ pub fn handle_list(json: bool) -> Result<()> {
                 println!(
                     "      {} {}",
                     "Created:".bright_black(),
-                    info.created_at.format("%Y-%m-%d %H:%M:%S")
+                    info.created_at
+                        .with_timezone(&Local)
+                        .format("%Y-%m-%d %H:%M:%S %Z")
                 );
 
                 // Get Claude sessions for this worktree
