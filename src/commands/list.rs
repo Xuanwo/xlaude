@@ -162,7 +162,7 @@ pub fn handle_list(json: bool) -> Result<()> {
                     "Created:".bright_black(),
                     info.created_at
                         .with_timezone(&Local)
-                        .format("%Y-%m-%d %H:%M:%S %Z")
+                        .format("%Y-%m-%d %H:%M:%S")
                 );
 
                 // Get Claude sessions for this worktree
