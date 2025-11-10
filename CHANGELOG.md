@@ -4,6 +4,7 @@
 
 ### Added
 - Resume the latest Codex session automatically when launching the agent, making `xlaude open` pick up the previous conversation without manual steps. (#70)
+- Introduce `xlaude checkout` to create worktrees directly from existing branches or GitHub pull requests without duplicating branches. (#74)
 
 ### Fixed
 - Prevent duplicate worktree registration when adding existing instances. (#64)

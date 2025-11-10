@@ -1,0 +1,16 @@
+---
+source: tests/integration.rs
+expression: state
+---
+{
+  "editor": null,
+  "worktrees": {
+    "test-repo/feature-checkout": {
+      "branch": "feature-checkout",
+      "created_at": "[TIMESTAMP]",
+      "name": "feature-checkout",
+      "path": "/tmp/TEST_DIR/test-repo-feature-checkout",
+      "repo_name": "test-repo"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+---
+source: tests/integration.rs
+expression: redacted
+---
+✨ Checking out branch 'feature-checkout' into worktree 'feature-checkout'...
+✅ Worktree created at: /tmp/TEST_DIR/test-repo-feature-checkout
+  💡 To open it later, run: xlaude open feature-checkout

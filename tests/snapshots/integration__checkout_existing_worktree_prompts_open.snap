@@ -1,0 +1,11 @@
+---
+source: tests/integration.rs
+expression: combined
+---
+STDOUT:
+⚠️ Worktree for branch 'checkout-existing' already exists at /tmp/TEST_DIR/test-repo-checkout-existing
+  💡 To open it manually, run: xlaude open checkout-existing
+
+---
+STDERR:
+Error: Worktree 'checkout-existing' already exists for branch 'checkout-existing'

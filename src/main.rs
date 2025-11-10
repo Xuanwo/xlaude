@@ -14,8 +14,8 @@ mod tmux;
 mod utils;
 
 use commands::{
-    handle_add, handle_clean, handle_config, handle_create, handle_delete, handle_dir, handle_list,
-    handle_open, handle_rename,
+    handle_add, handle_checkout, handle_clean, handle_config, handle_create, handle_delete,
+    handle_dir, handle_list, handle_open, handle_rename,
 };
 
 #[derive(Parser)]
@@ -32,6 +32,11 @@ enum Commands {
     Create {
         /// Name for the worktree (random BIP39 word if not provided)
         name: Option<String>,
+    },
+    /// Checkout a branch or pull request into a worktree
+    Checkout {
+        /// Branch name or pull request number
+        target: Option<String>,
     },
     /// Open an existing worktree and launch Claude
     Open {
@@ -92,6 +97,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Commands::Create { name } => handle_create(name),
+        Commands::Checkout { target } => handle_checkout(target),
         Commands::Open { name } => handle_open(name),
         Commands::Delete { name } => handle_delete(name),
         Commands::Add { name } => handle_add(name),

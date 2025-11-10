@@ -1,4 +1,5 @@
 pub mod add;
+pub mod checkout;
 pub mod clean;
 pub mod complete;
 pub mod config;
@@ -11,6 +12,7 @@ pub mod open;
 pub mod rename;
 
 pub use add::handle_add;
+pub use checkout::handle_checkout;
 pub use clean::handle_clean;
 pub use complete::handle_complete_worktrees;
 pub use config::handle_config;

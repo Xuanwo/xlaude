@@ -72,6 +72,18 @@ xlaude create existing-branch
 
 This creates a new git worktree at `../<repo>-<name>`. If the branch doesn't exist, it creates a new one. If the branch already exists (locally or on remote), it creates the worktree from that existing branch.
 
+### Checkout a branch or pull request
+
+```bash
+# Checkout an existing local or remote branch
+xlaude checkout feature-auth
+
+# Checkout GitHub pull request #123 (requires `origin` remote)
+xlaude checkout 123
+```
+
+`checkout` reuses the target branch without creating a new one. If xlaude is already managing a worktree for that branch/PR, it warns and offers to open it instead. When a numeric argument is provided, xlaude fetches `pull/<number>/head` from the `origin` remote into a local `pr/<number>` branch before creating the worktree.
+
 ### Open an existing workspace
 
 ```bash

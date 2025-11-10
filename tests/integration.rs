@@ -154,6 +154,23 @@ impl TestContext {
 
         result
     }
+
+    fn git(&self, args: &[&str]) -> std::process::Output {
+        let output = std::process::Command::new("git")
+            .args(args)
+            .current_dir(&self.repo_dir)
+            .output()
+            .unwrap();
+
+        assert!(
+            output.status.success(),
+            "git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        output
+    }
 }
 
 // Create command tests
@@ -224,6 +241,131 @@ fn test_create_on_wrong_branch() {
     let stderr = String::from_utf8_lossy(&output.get_output().stderr);
     let redacted = ctx.redact_paths(&stderr);
     assert_snapshot!(redacted);
+}
+
+// Checkout command tests
+#[test]
+fn test_checkout_branch_creates_worktree() {
+    let ctx = TestContext::new("test-repo");
+
+    ctx.git(&["checkout", "-b", "feature-checkout"]);
+    ctx.git(&["checkout", "main"]);
+    ctx.git(&["show-ref", "--verify", "refs/heads/feature-checkout"]);
+
+    let output = ctx
+        .xlaude(&["checkout", "feature-checkout"])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_paths(&stdout);
+    assert_snapshot!(redacted);
+
+    let mut state = ctx.read_state();
+    if let Some(obj) = state.as_object_mut() {
+        obj.remove("agent");
+    }
+    if let Some(worktrees) = state["worktrees"].as_object_mut() {
+        for (_, worktree) in worktrees.iter_mut() {
+            worktree["created_at"] = json!("[TIMESTAMP]");
+            if let Some(path) = worktree["path"].as_str() {
+                worktree["path"] = json!(ctx.redact_paths(path));
+            }
+        }
+    }
+    assert_json_snapshot!(state);
+
+    assert!(ctx.worktree_exists("feature-checkout"));
+}
+
+#[test]
+fn test_checkout_existing_worktree_prompts_open() {
+    let ctx = TestContext::new("test-repo");
+
+    ctx.xlaude(&["create", "checkout-existing"])
+        .assert()
+        .success();
+
+    let assert = ctx
+        .xlaude(&["checkout", "checkout-existing"])
+        .assert()
+        .failure();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr);
+    let combined = format!(
+        "STDOUT:\n{}\n---\nSTDERR:\n{}",
+        ctx.redact_paths(&stdout),
+        ctx.redact_paths(&stderr)
+    );
+    assert_snapshot!(combined);
+}
+
+#[test]
+fn test_checkout_pull_request_creates_worktree() {
+    let ctx = TestContext::new("test-repo");
+
+    let remote_dir = ctx.temp_dir.path().join("remote.git");
+    assert!(
+        std::process::Command::new("git")
+            .args(["init", "--bare", "remote.git"])
+            .current_dir(ctx.temp_dir.path())
+            .status()
+            .unwrap()
+            .success()
+    );
+
+    ctx.git(&["remote", "add", "origin", remote_dir.to_str().unwrap()]);
+    ctx.git(&["push", "-u", "origin", "main"]);
+
+    ctx.git(&["checkout", "-b", "pr-source"]);
+    fs::write(ctx.repo_dir.join("FEATURE.txt"), "feature change").unwrap();
+    ctx.git(&["add", "FEATURE.txt"]);
+    ctx.git(&["commit", "--no-gpg-sign", "-m", "Add PR change"]);
+    ctx.git(&["push", "origin", "pr-source"]);
+
+    let hash = String::from_utf8_lossy(&ctx.git(&["rev-parse", "pr-source"]).stdout)
+        .trim()
+        .to_string();
+
+    assert!(
+        std::process::Command::new("git")
+            .args([
+                "--git-dir",
+                remote_dir.to_str().unwrap(),
+                "update-ref",
+                "refs/pull/123/head",
+                &hash,
+            ])
+            .status()
+            .unwrap()
+            .success()
+    );
+
+    ctx.git(&["checkout", "main"]);
+
+    let output = ctx.xlaude(&["checkout", "123"]).assert().success();
+
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let redacted = ctx.redact_paths(&stdout);
+    assert_snapshot!(redacted);
+
+    let mut state = ctx.read_state();
+    if let Some(obj) = state.as_object_mut() {
+        obj.remove("agent");
+    }
+    if let Some(worktrees) = state["worktrees"].as_object_mut() {
+        for (_, worktree) in worktrees.iter_mut() {
+            worktree["created_at"] = json!("[TIMESTAMP]");
+            if let Some(path) = worktree["path"].as_str() {
+                worktree["path"] = json!(ctx.redact_paths(path));
+            }
+        }
+    }
+    assert_json_snapshot!(state);
+
+    let pr_worktree = ctx.temp_dir.path().join("remote-pr-123");
+    assert!(pr_worktree.exists());
 }
 
 // List command tests

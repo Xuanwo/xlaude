@@ -1,0 +1,16 @@
+---
+source: tests/integration.rs
+expression: state
+---
+{
+  "editor": null,
+  "worktrees": {
+    "remote/pr-123": {
+      "branch": "pr/123",
+      "created_at": "[TIMESTAMP]",
+      "name": "pr-123",
+      "path": "/tmp/TEST_DIR/remote-pr-123",
+      "repo_name": "remote"
+    }
+  }
+}
