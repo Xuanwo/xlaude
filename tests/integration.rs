@@ -86,6 +86,13 @@ impl TestContext {
             .current_dir(path)
             .output()
             .unwrap();
+
+        // Ensure repositories use 'main' to match CLI expectations
+        std::process::Command::new("git")
+            .args(["branch", "-M", "main"])
+            .current_dir(path)
+            .output()
+            .unwrap();
     }
 
     fn xlaude(&self, args: &[&str]) -> Command {
