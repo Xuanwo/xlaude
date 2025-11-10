@@ -1,163 +1,115 @@
-# xlaude - Claude 实例管理工具
+# xlaude · Agent Handbook
 
-xlaude 是一个用于管理 Claude 实例的命令行工具，通过 git worktree 实现多分支并行开发。
+## 0 · 关于用户
+- 用户：漩涡（Xuanwo）
+- 偏好：高频上下文切换、以 git worktree 管理多条分支，并依赖 AI Agent 协助编码。
 
-## 核心功能
+## 1 · 编程哲学
+1. 程序首先服务于人类阅读，机器可执行只是附带价值。
+2. 遵循各语言的惯用风格，代码应自解释。
+3. 识别并消除以下坏味道：僵化、冗余、循环依赖、脆弱性、晦涩性、数据泥团、不必要的复杂性。
+4. 一旦发现坏味道，立即提醒并提出改进方案。
 
-### xlaude create [name]
-创建新的 worktree 和分支：
-- 必须在 main/master/develop 分支上执行
-- 如果不提供 name，自动从 BIP39 词库随机选择一个词
-- 创建新分支 `<name>`
-- 创建 worktree 到 `../<repo-name>-<name>` 目录
-- **不会自动启动 Claude**
+## 2 · 语言策略
 
-### xlaude open [name]
-打开已存在的 worktree 并启动全局配置的 Agent（默认为 Claude）：
-- 有参数：打开指定的 worktree
-- 无参数：
-  - 如果当前目录是 worktree（非 main/master/develop）：直接打开当前 worktree
-  - 如果当前 worktree 未被管理：询问是否添加并打开
-  - 否则：显示交互式选择列表
-- 切换到 worktree 目录
-- 启动全局配置的 `agent` 命令（默认：`claude --dangerously-skip-permissions`）
-- 继承所有环境变量
+| 内容类型 | 语言 |
+| --- | --- |
+| 解释、讨论、沟通 | **简体中文** |
+| 代码、注释、变量名、提交信息、文档示例 | **English**（技术内容中禁止出现中文字符） |
 
-### xlaude delete [name]
-删除 worktree 并清理：
-- 有参数：删除指定的 worktree
-- 无参数：删除当前所在的 worktree
-- 检查未提交的修改和未推送的 commit
-- 检查分支是否已完全合并，未合并时询问是否强制删除
-- 需要时进行二次确认
-- 自动删除 worktree 和本地分支（如果安全）
+## 3 · 编码标准
+- 仅在行为不明显时添加英文注释。
+- 默认无需新增测试；仅在必要或显式要求时补充。
+- 代码结构需保持可演进性，杜绝复制粘贴式实现。
 
-### xlaude add [name]
-将当前 worktree 添加到 xlaude 管理：
-- 必须在 git worktree 中执行
-- 如果不提供 name，默认使用当前分支名
-- 检查是否已被管理，避免重复添加
-- 适用于手动创建的 worktree 或从其他地方克隆的项目
+## 4 · CLI 功能速览
 
-### xlaude list
-列出所有活跃的 worktree，显示：
-- 名称
-- 仓库名
-- 路径
-- 创建时间
-- Claude sessions（如果存在）
-  - 显示最多 3 个最近的 session
-  - 每个 session 显示：最后更新时间和最后的用户消息
-  - 超过 3 个时显示剩余数量
+| 命令 | 职责与要点 |
+| --- | --- |
+| `create [name]` | 仅允许在 base 分支（main/master/develop 或远端默认分支）执行；缺省名称从 BIP39 词库随机生成；自动更新 submodules 并拷贝 `CLAUDE.local.md`；可通过 `XLAUDE_NO_AUTO_OPEN` 跳过“是否立即打开”提示。 |
+| `checkout <branch|pr>` | 支持分支名或 PR 号（`123`/`#123`）；缺失分支会从 `origin` fetch；PR 自动 fetch `pull/<n>/head`→`pr/<n>`；如已存在对应 worktree，会提示改为 `open`。 |
+| `open [name]` | 无参数时：若当前目录为非 base worktree，直接打开；未被管理的 worktree 会询问后自动加入 state；否则进入交互式选择或接受管道输入；启动全局 `agent` 命令并继承所有环境变量。 |
+| `add [name]` | 将当前 git worktree 写入 state，默认名称为分支名（斜杠会被 `-` 取代）；拒绝重复路径。 |
+| `rename <old> <new>` | 仅更新 state 中的工作树别名，不触碰实际目录或分支。 |
+| `list [--json]` | 按仓库分组展示路径/创建时间，并读取 Claude (`~/.claude/projects`) 与 Codex (`~/.codex/sessions` 或 `XLAUDE_CODEX_SESSIONS_DIR`) 会话，列出最近 3 条用户消息；`--json` 输出结构化字段，方便脚本消费。 |
+| `dir [name]` | 输出纯路径，便于 `cd $(xlaude dir foo)`；可交互选择或接收管道输入。 |
+| `delete [name]` | 自动检查未提交修改、未推送提交以及合并状态（通过 `git branch --merged` 与 `gh pr list` 双重检测），必要时多次确认；若目录已不存在则执行 `git worktree prune`；最后尝试安全删分支，不合并时再询问是否 `-D`。 |
+| `clean` | 遍历所有仓库，取 `git worktree list --porcelain` 与 state 比对，移除已被手动删除的 worktree。 |
+| `dashboard` | 依赖 tmux，显示所有 worktree、Claude/Codex 状态（Waiting/Processing/Error/Idle）；可按 `Enter` 进入 session、`Ctrl+Q` 返回、`n` 创建新 worktree、`d` 关闭 session、`c` 设置 `editor`、`Ctrl+T` 切换右侧终端、`Ctrl+O` 启动编辑器。 |
+| `config` | 用 `$EDITOR` 打开 state 文件，便于手工修改 `agent`/`editor` 等全局配置。 |
+| `completions <shell>` | 输出 Bash/Zsh/Fish 补全脚本，内部调用隐藏命令 `complete-worktrees` 获取动态列表。 |
+| `complete-worktrees [--format=simple|detailed]` | 提供简单或包含 repo/path/session 摘要的工作树清单，供补全或自定义脚本调用。 |
 
-### xlaude clean
-清理无效的 worktree：
-- 检查所有管理的 worktree 是否仍存在于 git 中
-- 自动移除已被手动删除的 worktree
-- 适用于使用 `git worktree remove` 后的清理
-- 保持 xlaude 状态与 git 状态同步
+## 5 · Agent 与会话管理
+- `state.json` 中的 `agent` 字段定义启动命令，默认 `claude --dangerously-skip-permissions`。命令按 Shell 规则分词，建议将复杂管道封装为脚本。
+- 当 `agent` 的可执行名为 `codex` 且未显式给出位置参数时，xlaude 会在 `~/.codex/sessions`（或 `XLAUDE_CODEX_SESSIONS_DIR`）寻找与当前 worktree 匹配的最新会话，并自动追加 `resume <session-id>`。
+- `editor` 字段控制 tmux session 内的 `Ctrl+O`。可在 Dashboard 内按 `c` 设置，或通过 `xlaude config` 手动编辑。
+- Dashboard 的 tmux session 命名为 `xlaude_<worktree>`，会自动配置状态栏及快捷键；`Ctrl+T` 打开右侧命令窗，`Ctrl+Q` 无缝返回仪表盘。
+- `list`/Dashboard 通过解析 Claude JSONL 与 Codex session 目录，展示最近的用户消息与“time ago”标签，帮助判断上下文是否值得恢复。
 
-### xlaude rename <old_name> <new_name>
-重命名 worktree 状态：
-- 重命名 xlaude 管理中的 worktree 名称
-- 仅更新 xlaude 状态，不影响实际的 git worktree 或目录
-- 检查新名称是否已存在，避免冲突
-- 保留所有 Claude sessions 和元数据
-
-### xlaude dir [name]
-获取 worktree 的目录路径：
-- 有参数：返回指定 worktree 的绝对路径
-- 无参数：显示交互式选择列表
-- 输出纯路径，无装饰符，便于 shell 命令使用
-- 适用于与其他工具集成（cd、编辑器、zoxide 等）
-
-## 技术实现
-
-- 使用 Rust 开发
-- 直接调用系统 git 命令
-- 状态持久化位置：
+## 6 · 状态与数据
+- 状态位置：
   - macOS: `~/Library/Application Support/com.xuanwo.xlaude/state.json`
   - Linux: `~/.config/xlaude/state.json`
   - Windows: `%APPDATA%\xuanwo\xlaude\config\state.json`
-  - Worktree key 格式：`<repo-name>/<worktree-name>`（v0.3+）
-  - 自动迁移旧版本格式到新格式
-- 使用 clap 构建 CLI
-- 使用 BIP39 词库生成随机名称
-- 彩色输出和交互式确认
-- 集成测试覆盖所有核心功能
+- 条目键：`<repo-name>/<worktree-name>`；运行时若发现旧版本（无 `/`）会自动迁移并写回。
+- `XLAUDE_CONFIG_DIR` 可重定向整个配置目录，便于测试或隔离环境。
+- 创建/checkout 新 worktree 时若仓库根目录存在 `CLAUDE.local.md` 会自动复制；同时执行 `git submodule update --init --recursive` 保证依赖就位。
 
-## 全局 Agent 配置
+## 7 · 环境变量与自动化
 
-`agent` 字段用于配置启动会话时使用的完整命令行（全局唯一，对 `open` 和 Dashboard 均生效）：
+| 变量 | 作用 |
+| --- | --- |
+| `XLAUDE_YES=1` | 对所有确认对话框默认为“是”；多用于脚本化删除或批量操作。 |
+| `XLAUDE_NON_INTERACTIVE=1` | 禁用交互式选择，命令在无输入时直接失败或采用默认值。 |
+| `XLAUDE_NO_AUTO_OPEN=1` | `create` 成功后不再提示“是否立即 open”。 |
+| `XLAUDE_CONFIG_DIR=/path` | 覆盖 state/配置所在目录。 |
+| `XLAUDE_CODEX_SESSIONS_DIR=/path` | 指定 Codex 会话日志位置，便于自定义同步策略。 |
+| `XLAUDE_TEST_SEED=42` | 让随机工作树名在测试中可复现。 |
+| `XLAUDE_TEST_MODE=1` | CI/测试专用，关闭部分交互并禁止自动打开新 worktree。 |
 
-```json
-{
-  "worktrees": { /* ... */ },
-  "editor": "zed",
-  "agent": "codex"
-}
-```
+- 输入优先级：命令行参数 > 管道输入 > 交互式提示。例如 `echo wrong | xlaude open correct` 依然会打开 `correct`。
+- 管道输入既可传名称，也可给 `smart_confirm` 提供 `y/n`，因此 `yes | xlaude delete foo` 可实现无人值守清理。
 
-说明：
+## 8 · 仪表盘与 tmux 快捷键
+- 首次进入 Dashboard 会检查 tmux 是否安装；缺失会直接报错提醒安装方式（macOS: `brew install tmux` 等）。
+- 预览区会缓存最近 100 行 pane 输出，并通过 `ClaudeStatusDetector` 判断 Waiting/Processing/Error/Idle，用色彩和图标区分。
+- Dashboard 可在不离开界面的情况下：
+  1. 按 `n` 创建 worktree（可留空走随机命名）。
+  2. 按 `d` 杀死挂起的 Claude/Codex session。
+  3. 按 `c` 设置 `editor`，让 `Ctrl+O` 立即生效。
+- 回到 tmux session 时提供顶部菜单栏，提示当前快捷键。
 
-- 若未设置，默认值为 `claude --dangerously-skip-permissions`。
-- 该值按 shell 风格进行分词解析，支持引号；如需管道/重定向，请写成脚本后在此引用脚本路径。
-- 不支持环境变量或每仓库/每 worktree 覆盖；全局唯一。
-
-## 使用示例
-
+## 9 · 工作流示例
 ```bash
-# 在 opendal 项目中创建新的工作分支
-cd opendal
-xlaude create feature-x  # 创建 ../opendal-feature-x 目录
+# 创建并立即开始一个功能分支
+xlaude create ingestion-batch
+xlaude open ingestion-batch
 
-# 使用随机名称创建
-xlaude create  # 可能创建 ../opendal-dolphin 目录
+# 直接检出 GitHub PR #128 并分配独立 worktree
+xlaude checkout 128
+xlaude open pr-128
 
-# 打开并启动 Claude
-xlaude open feature-x  # 打开指定的 worktree
-xlaude open  # 如果在 worktree 中直接打开，否则交互式选择
-
-# 将已存在的 worktree 添加到管理
-cd ../opendal-bugfix
-xlaude add  # 使用当前分支名作为名称
-xlaude add hotfix  # 或指定自定义名称
-
-# 列出所有活跃的实例
+# 查看所有活跃上下文及最近对话
 xlaude list
 
-# 删除当前 worktree
-xlaude delete
+# Dashboard 中按 Enter 附着，按 Ctrl+Q 回到面板
+xlaude dashboard
 
-# 删除指定 worktree
-xlaude delete feature-x
-
-# 清理无效的 worktree
-xlaude clean
-
-# 重命名 worktree
-xlaude rename feature-x feature-improved
-
-# 典型工作流
-xlaude create my-feature  # 创建 worktree
-xlaude open my-feature   # 打开并开始工作
-# ... 工作完成后 ...
-xlaude delete my-feature # 清理 worktree
-
-# 直接在当前 worktree 中启动
-cd ../opendal-feature
-xlaude open  # 自动检测并打开当前 worktree
-
-# 获取 worktree 路径（用于目录切换）
-cd $(xlaude dir feature-x)  # 切换到指定 worktree
-xlaude dir  # 交互式选择 worktree 并输出路径
-
-# 配合 shell function 使用
-# 在 .bashrc/.zshrc 中添加：
-# xcd() { cd $(xlaude dir "$@"); }
-xcd feature-x  # 快速切换到 worktree
-
-# 与其他工具集成
-code $(xlaude dir feature-x)  # 用 VSCode 打开
-vim $(xlaude dir feature-x)/src/main.rs  # 编辑文件
+# 任务结束后清理
+xlaude delete ingestion-batch
 ```
+
+## 10 · 依赖提示
+- Git ≥ 2.36（需要成熟的 worktree 支持）。
+- Rust 工具链（用于构建或 `cargo install`）。
+- Claude CLI 或自定义 agent（如 Codex）。
+- `tmux`（仪表盘与长驻 session 必备）。
+- `gh` CLI 可选，用于 `delete` 检测已经合并的 PR（无则自动降级，仅依赖 git）。
+
+## 11 · 注意事项
+- `create`/`checkout` 会拒绝在非 base 分支上执行，避免分支森林难以维护。
+- `delete` 在当前目录即将被删除时，会先切换回主仓库以免 `worktree remove` 卡住；若目录已不在磁盘上，会提示是否仅从 state 清理。
+- `list --json` 暴露精准路径、分支、创建时间、Claude/Codex 会话，可直接被脚本或 UI 消费；注意敏感信息输出。
+- Shell 补全依赖隐藏命令 `complete-worktrees`，若需要自定义补全，记得使用 `--format=detailed` 以获得 repo/path/session 描述。
+- 代码风格遵循“先思考、再尝试”原则：遇到不确定性需先复述问题、列出方案，再实施。
