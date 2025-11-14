@@ -14,7 +14,6 @@ fn setup_test_repo() -> (TempDir, String, String) {
     fs::create_dir_all(&config_dir).unwrap();
     let default_state = serde_json::json!({
         "worktrees": {},
-        "editor": null,
         "agent": "true"
     });
     fs::write(

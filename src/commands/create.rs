@@ -57,8 +57,7 @@ pub fn handle_create_in_dir_quiet(
     };
 
     // Only check base branch if no repo_path is provided (i.e., running from CLI in current directory)
-    // When called from dashboard with a specific repo_path, we don't need this check
-    // as we'll create the worktree from the default branch
+    // Clients that pass repo_path are expected to enforce their own branch safety checks
     if repo_path.is_none() {
         let current_branch = exec_git(&["branch", "--show-current"])?;
         let default_branch = exec_git(&["symbolic-ref", "refs/remotes/origin/HEAD"])

@@ -176,7 +176,6 @@ mod tests {
 
         let state = json!({
             "worktrees": {},
-            "editor": null,
             "agent": "codex"
         });
         fs::write(

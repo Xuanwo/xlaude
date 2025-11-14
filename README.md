@@ -2,15 +2,14 @@
 
 > Manage Claude or Codex coding sessions by turning every git worktree into its own agent playground.
 
-xlaude keeps large projects organized by pairing each feature branch with a dedicated AI session. It automates worktree creation, keeps track of conversation history, and provides an opinionated dashboard so you can pause, resume, and clean up work in seconds.
+xlaude keeps large projects organized by pairing each feature branch with a dedicated AI session. It automates worktree creation, keeps track of conversation history, and helps you pause, resume, and clean up work in seconds.
 
 ## Why xlaude?
 
 - **Worktree-native workflow** – every feature branch lives in `../<repo>-<worktree>` with automatic branch creation, sanitized names, and submodule updates.
-- **Session awareness** – `list` and the dashboard read Claude (`~/.claude/projects`) and Codex (`~/.codex/sessions`) logs to surface the last user prompt and activity timestamps per worktree.
+- **Session awareness** – `list` reads Claude (`~/.claude/projects`) and Codex (`~/.codex/sessions`) logs to surface the last user prompt and activity timestamps per worktree.
 - **Agent agnostic** – configure a single `agent` command (default `claude --dangerously-skip-permissions`). When that command is `codex`, xlaude auto-appends `resume <session-id>` matching the worktree.
 - **Automation ready** – every subcommand accepts piped input, honors `XLAUDE_YES`/`XLAUDE_NON_INTERACTIVE`, and exposes a hidden completion helper for shell integration.
-- **tmux dashboard** – start long-lived sessions, preview output, attach/detach with `Ctrl+Q`, and spawn new worktrees without leaving the keyboard.
 
 ## Installation
 
@@ -19,7 +18,6 @@ xlaude keeps large projects organized by pairing each feature branch with a dedi
 - Git with worktree support (git ≥ 2.36 recommended).
 - Rust toolchain (for `cargo install` or local builds).
 - Claude CLI or any other agent command you plan to run.
-- `tmux` (only required for `xlaude dashboard`).
 - Optional but recommended: GitHub CLI (`gh`) so `delete` can detect merged PRs even after squash merges.
 
 ### From crates.io
@@ -73,7 +71,6 @@ Set the global `agent` field to the exact command line xlaude should launch for 
 ```json
 {
   "agent": "codex --dangerously-bypass-approvals-and-sandbox",
-  "editor": "zed",
   "worktrees": {
     "repo/feature": { /* ... */ }
   }
@@ -83,10 +80,6 @@ Set the global `agent` field to the exact command line xlaude should launch for 
 - Default value: `claude --dangerously-skip-permissions`.
 - The command is split with shell-style rules, so quotes are supported. Pipelines or redirects should live in a wrapper script.
 - When the program name is `codex` and no positional arguments were supplied, xlaude will locate the latest session under `~/.codex/sessions` (or `XLAUDE_CODEX_SESSIONS_DIR`) whose `cwd` matches the worktree and automatically append `resume <session-id>`.
-
-### Editor binding
-
-Set the optional `editor` field to enable `Ctrl+O` inside tmux sessions (e.g., `"editor": "code -n"`). Use `xlaude dashboard`, hit `c`, type the command, and the state file will be updated. Alternatively, run `xlaude config` to open `state.json` in `$EDITOR`.
 
 ### Worktree creation defaults
 
@@ -98,7 +91,7 @@ Set the optional `editor` field to enable `Ctrl+O` inside tmux sessions (e.g., `
 
 ### `xlaude create [name]`
 
-- Must be run from a base branch (`main`, `master`, `develop`, or the remote default). The branch check is skipped when the dashboard calls this command for you.
+- Must be run from a base branch (`main`, `master`, `develop`, or the remote default).
 - Without a name, xlaude selects a random BIP39 word; set `XLAUDE_TEST_SEED` for deterministic names in CI.
 - Rejects duplicate worktree directories or existing state entries.
 - Offers to open the new worktree unless `XLAUDE_NO_AUTO_OPEN` or `XLAUDE_TEST_MODE` is set.
@@ -174,24 +167,9 @@ When no argument is provided, an interactive selector (or piped input) chooses t
 
 Cross-checks `state.json` against actual `git worktree list` output for every known repository. Any missing directories are removed from state with a concise report.
 
-### `xlaude dashboard`
-
-- Requires `tmux` in `PATH`.
-- Lists all managed worktrees along with Claude/Codex status (Waiting, Processing, Idle, Error) inferred from recent pane output.
-- Creates dedicated tmux sessions named `xlaude_<worktree>`; inside a session:
-  - `Ctrl+Q` detaches back to the dashboard.
-  - `Ctrl+T` toggles a right-hand terminal pane.
-  - `Ctrl+O` launches the configured `editor` with the current path.
-- Dashboard key map:
-  - `Enter`: attach to selected worktree (creating the session if needed).
-  - `n`: prompt for a name and create a new worktree in the same repository.
-  - `d`: stop the active Claude session (kills the tmux session).
-  - `c`: edit the `editor` command.
-  - `r`: refresh; `?`: help overlay; `q`: quit.
-
 ### `xlaude config`
 
-Opens the state file in `$EDITOR`, creating parent directories as needed. Use this to hand-edit `agent`, `editor`, or worktree metadata.
+Opens the state file in `$EDITOR`, creating parent directories as needed. Use this to hand-edit the global `agent` or worktree metadata.
 
 ### `xlaude completions <shell>`
 
@@ -228,13 +206,10 @@ xlaude create payments-strategy
 # 2. Start working with your agent
 xlaude open payments-strategy
 
-# 3. Pause and switch via dashboard
-xlaude dashboard
-
-# 4. Inspect outstanding worktrees across repositories
+# 3. Inspect outstanding worktrees across repositories
 xlaude list --json | jq '.worktrees | length'
 
-# 5. Clean up after merge
+# 4. Clean up after merge
 xlaude delete payments-strategy
 ```
 

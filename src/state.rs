@@ -19,7 +19,6 @@ pub struct WorktreeInfo {
 pub struct XlaudeState {
     // Key format: "{repo_name}/{worktree_name}"
     pub worktrees: HashMap<String, WorktreeInfo>,
-    pub editor: Option<String>,
     // Global agent command to launch sessions (full command line string)
     pub agent: Option<String>,
 }

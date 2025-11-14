@@ -34,7 +34,6 @@ impl TestContext {
         fs::create_dir_all(&config_dir).unwrap();
         let default_state = json!({
             "worktrees": {},
-            "editor": null,
             "agent": "true"
         });
         fs::write(

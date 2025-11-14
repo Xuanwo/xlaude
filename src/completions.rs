@@ -32,7 +32,7 @@ _xlaude() {{
     fi
 
     # Main commands
-    local commands="create open delete add rename list clean dir dashboard completions"
+    local commands="create open delete add rename list clean dir completions"
 
     # Complete main commands
     if [[ $cword -eq 1 ]]; then
@@ -84,7 +84,6 @@ _xlaude() {{
         'list:List all active Claude instances'
         'clean:Clean up invalid worktrees from state'
         'dir:Get the directory path of a worktree'
-        'dashboard:Launch interactive dashboard for managing Claude sessions'
         'completions:Generate shell completions'
     )
 
@@ -178,7 +177,6 @@ complete -c xlaude -n "__fish_use_subcommand" -a rename -d "Rename a worktree"
 complete -c xlaude -n "__fish_use_subcommand" -a list -d "List all active Claude instances"
 complete -c xlaude -n "__fish_use_subcommand" -a clean -d "Clean up invalid worktrees from state"
 complete -c xlaude -n "__fish_use_subcommand" -a dir -d "Get the directory path of a worktree"
-complete -c xlaude -n "__fish_use_subcommand" -a dashboard -d "Launch interactive dashboard for managing Claude sessions"
 complete -c xlaude -n "__fish_use_subcommand" -a completions -d "Generate shell completions"
 
 # Function to get worktree completions with repo markers

@@ -35,17 +35,14 @@
 | `dir [name]` | 输出纯路径，便于 `cd $(xlaude dir foo)`；可交互选择或接收管道输入。 |
 | `delete [name]` | 自动检查未提交修改、未推送提交以及合并状态（通过 `git branch --merged` 与 `gh pr list` 双重检测），必要时多次确认；若目录已不存在则执行 `git worktree prune`；最后尝试安全删分支，不合并时再询问是否 `-D`。 |
 | `clean` | 遍历所有仓库，取 `git worktree list --porcelain` 与 state 比对，移除已被手动删除的 worktree。 |
-| `dashboard` | 依赖 tmux，显示所有 worktree、Claude/Codex 状态（Waiting/Processing/Error/Idle）；可按 `Enter` 进入 session、`Ctrl+Q` 返回、`n` 创建新 worktree、`d` 关闭 session、`c` 设置 `editor`、`Ctrl+T` 切换右侧终端、`Ctrl+O` 启动编辑器。 |
-| `config` | 用 `$EDITOR` 打开 state 文件，便于手工修改 `agent`/`editor` 等全局配置。 |
+| `config` | 用 `$EDITOR` 打开 state 文件，便于手工修改 `agent` 等全局配置。 |
 | `completions <shell>` | 输出 Bash/Zsh/Fish 补全脚本，内部调用隐藏命令 `complete-worktrees` 获取动态列表。 |
 | `complete-worktrees [--format=simple|detailed]` | 提供简单或包含 repo/path/session 摘要的工作树清单，供补全或自定义脚本调用。 |
 
 ## 5 · Agent 与会话管理
 - `state.json` 中的 `agent` 字段定义启动命令，默认 `claude --dangerously-skip-permissions`。命令按 Shell 规则分词，建议将复杂管道封装为脚本。
 - 当 `agent` 的可执行名为 `codex` 且未显式给出位置参数时，xlaude 会在 `~/.codex/sessions`（或 `XLAUDE_CODEX_SESSIONS_DIR`）寻找与当前 worktree 匹配的最新会话，并自动追加 `resume <session-id>`。
-- `editor` 字段控制 tmux session 内的 `Ctrl+O`。可在 Dashboard 内按 `c` 设置，或通过 `xlaude config` 手动编辑。
-- Dashboard 的 tmux session 命名为 `xlaude_<worktree>`，会自动配置状态栏及快捷键；`Ctrl+T` 打开右侧命令窗，`Ctrl+Q` 无缝返回仪表盘。
-- `list`/Dashboard 通过解析 Claude JSONL 与 Codex session 目录，展示最近的用户消息与“time ago”标签，帮助判断上下文是否值得恢复。
+- `list` 会解析 Claude JSONL 与 Codex session 目录，展示最近的用户消息与“time ago”标签，帮助判断上下文是否值得恢复。
 
 ## 6 · 状态与数据
 - 状态位置：
@@ -71,16 +68,7 @@
 - 输入优先级：命令行参数 > 管道输入 > 交互式提示。例如 `echo wrong | xlaude open correct` 依然会打开 `correct`。
 - 管道输入既可传名称，也可给 `smart_confirm` 提供 `y/n`，因此 `yes | xlaude delete foo` 可实现无人值守清理。
 
-## 8 · 仪表盘与 tmux 快捷键
-- 首次进入 Dashboard 会检查 tmux 是否安装；缺失会直接报错提醒安装方式（macOS: `brew install tmux` 等）。
-- 预览区会缓存最近 100 行 pane 输出，并通过 `ClaudeStatusDetector` 判断 Waiting/Processing/Error/Idle，用色彩和图标区分。
-- Dashboard 可在不离开界面的情况下：
-  1. 按 `n` 创建 worktree（可留空走随机命名）。
-  2. 按 `d` 杀死挂起的 Claude/Codex session。
-  3. 按 `c` 设置 `editor`，让 `Ctrl+O` 立即生效。
-- 回到 tmux session 时提供顶部菜单栏，提示当前快捷键。
-
-## 9 · 工作流示例
+## 8 · 工作流示例
 ```bash
 # 创建并立即开始一个功能分支
 xlaude create ingestion-batch
@@ -93,21 +81,17 @@ xlaude open pr-128
 # 查看所有活跃上下文及最近对话
 xlaude list
 
-# Dashboard 中按 Enter 附着，按 Ctrl+Q 回到面板
-xlaude dashboard
-
 # 任务结束后清理
 xlaude delete ingestion-batch
 ```
 
-## 10 · 依赖提示
+## 9 · 依赖提示
 - Git ≥ 2.36（需要成熟的 worktree 支持）。
 - Rust 工具链（用于构建或 `cargo install`）。
 - Claude CLI 或自定义 agent（如 Codex）。
-- `tmux`（仪表盘与长驻 session 必备）。
 - `gh` CLI 可选，用于 `delete` 检测已经合并的 PR（无则自动降级，仅依赖 git）。
 
-## 11 · 注意事项
+## 10 · 注意事项
 - `create`/`checkout` 会拒绝在非 base 分支上执行，避免分支森林难以维护。
 - `delete` 在当前目录即将被删除时，会先切换回主仓库以免 `worktree remove` 卡住；若目录已不在磁盘上，会提示是否仅从 state 清理。
 - `list --json` 暴露精准路径、分支、创建时间、Claude/Codex 会话，可直接被脚本或 UI 消费；注意敏感信息输出。
