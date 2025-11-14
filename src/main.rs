@@ -6,14 +6,15 @@ mod claude;
 mod codex;
 mod commands;
 mod completions;
+mod dashboard;
 mod git;
 mod input;
 mod state;
 mod utils;
 
 use commands::{
-    handle_add, handle_checkout, handle_clean, handle_config, handle_create, handle_delete,
-    handle_dir, handle_list, handle_open, handle_rename,
+    handle_add, handle_checkout, handle_clean, handle_config, handle_create, handle_dashboard,
+    handle_delete, handle_dir, handle_list, handle_open, handle_rename,
 };
 
 #[derive(Parser)]
@@ -86,6 +87,15 @@ enum Commands {
     },
     /// Open the xlaude state file in $EDITOR
     Config,
+    /// Launch the embedded dashboard
+    Dashboard {
+        /// Bind address (default 127.0.0.1:5710)
+        #[arg(long)]
+        addr: Option<String>,
+        /// Do not open the browser automatically
+        #[arg(long)]
+        no_browser: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -104,5 +114,6 @@ fn main() -> Result<()> {
         Commands::Completions { shell } => completions::handle_completions(shell),
         Commands::CompleteWorktrees { format } => commands::handle_complete_worktrees(&format),
         Commands::Config => handle_config(),
+        Commands::Dashboard { addr, no_browser } => handle_dashboard(addr, no_browser),
     }
 }

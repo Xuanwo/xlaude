@@ -19,6 +19,9 @@ bip39 = "2.2.0"
 anyhow = "1.0.100"
 atty = "0.2.14"
 shell-words = "1.1.0"
+axum = { version = "0.7.9", features = ["macros", "json"] }
+tokio = { version = "1.41.0", features = ["macros", "rt-multi-thread", "signal"] }
+webbrowser = "0.8.12"
 
 [dev-dependencies]
 insta = { version = "1.43.2", features = ["json", "redactions"] }

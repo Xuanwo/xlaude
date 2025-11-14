@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
@@ -26,6 +27,10 @@ fn sessions_root() -> Option<PathBuf> {
 
 fn normalized_path(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
+pub fn normalized_worktree_path(path: &Path) -> PathBuf {
+    normalized_path(path)
 }
 
 fn read_sorted_directories(path: &Path) -> Result<Vec<PathBuf>> {
@@ -293,4 +298,54 @@ pub fn recent_sessions(worktree_path: &Path, limit: usize) -> Result<(Vec<CodexS
     }
 
     Ok((sessions, total))
+}
+
+pub fn collect_recent_sessions_for_paths(
+    worktree_paths: &[PathBuf],
+    limit: usize,
+) -> Result<HashMap<PathBuf, Vec<CodexSession>>> {
+    if worktree_paths.is_empty() || limit == 0 {
+        return Ok(HashMap::new());
+    }
+
+    let files = iterate_session_files(true)?;
+    if files.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let mut targets: HashSet<PathBuf> = HashSet::new();
+    for path in worktree_paths {
+        targets.insert(normalized_path(path));
+    }
+
+    let mut satisfied: HashSet<PathBuf> = HashSet::new();
+    let mut map: HashMap<PathBuf, Vec<CodexSession>> = HashMap::new();
+
+    for file in files {
+        if satisfied.len() == targets.len() {
+            break;
+        }
+
+        let Some(session) = parse_session_file(&file)? else {
+            continue;
+        };
+
+        let normalized = normalized_path(&session.cwd);
+        if !targets.contains(&normalized) {
+            continue;
+        }
+
+        let entry = map.entry(normalized.clone()).or_insert_with(Vec::new);
+        if entry.len() >= limit {
+            satisfied.insert(normalized);
+            continue;
+        }
+
+        entry.push(session);
+        if entry.len() == limit {
+            satisfied.insert(normalized);
+        }
+    }
+
+    Ok(map)
 }

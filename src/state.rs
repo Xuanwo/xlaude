@@ -20,7 +20,14 @@ pub struct XlaudeState {
     // Key format: "{repo_name}/{worktree_name}"
     pub worktrees: HashMap<String, WorktreeInfo>,
     // Global agent command to launch sessions (full command line string)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
+    // Preferred editor command (full command line string)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub editor: Option<String>,
+    // Preferred interactive shell command
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shell: Option<String>,
 }
 
 impl XlaudeState {

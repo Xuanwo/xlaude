@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>xlaude Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: #090b10;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, rgba(99,102,241,0.35), transparent 55%),
+        radial-gradient(circle at 20% 20%, rgba(56,189,248,0.2), transparent 40%),
+        #090b10;
+      color: #f7f7fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 28px clamp(16px, 4vw, 72px) 12px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 4vw, 36px);
+      font-weight: 600;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: rgba(247,247,251,0.7);
+      font-size: 14px;
+    }
+
+    .header-menu {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .menu-button {
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 999px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.06);
+      color: #f7f7fb;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease, border 0.15s ease;
+    }
+
+    .menu-button:hover {
+      background: rgba(99,102,241,0.3);
+      border-color: rgba(99,102,241,0.6);
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 22px;
+      background: linear-gradient(120deg, #6366f1, #8b5cf6);
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    button:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(99,102,241,0.45);
+    }
+
+    .app-shell {
+      flex: 1;
+      padding: 12px clamp(16px, 4vw, 72px) 32px;
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+      gap: 24px;
+    }
+
+    .sidebar {
+      background: rgba(13, 16, 24, 0.85);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 20px;
+      padding: 20px 14px 18px;
+      box-shadow: 0 18px 30px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 520px;
+    }
+
+    .sidebar-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0 6px;
+      color: rgba(247,247,251,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-title span {
+      font-size: 13px;
+      color: rgba(247,247,251,0.6);
+    }
+
+    .worktree-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .worktree-item {
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.03);
+      cursor: pointer;
+      transition: border 0.15s ease, background 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .worktree-item:hover {
+      border-color: rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .worktree-item.active {
+      border-color: rgba(99,102,241,0.9);
+      background: rgba(99,102,241,0.12);
+      box-shadow: inset 0 0 0 1px rgba(99,102,241,0.35);
+    }
+
+    .item-title {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .item-subtitle {
+      font-size: 12px;
+      color: rgba(247,247,251,0.65);
+    }
+
+    .status-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: rgba(247,247,251,0.75);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      background: #4ade80;
+    }
+
+    .dot.dirty {
+      background: #fbbf24;
+    }
+
+    .dot.error {
+      background: #f87171;
+    }
+
+    .detail-panel {
+      background: rgba(11, 13, 22, 0.9);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 18px 30px rgba(0,0,0,0.4);
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .detail-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .detail-title {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 600;
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .action-button {
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.04);
+      color: #f7f7fb;
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease, border 0.15s ease;
+    }
+
+    .action-button:hover {
+      background: rgba(99,102,241,0.25);
+      border-color: rgba(99,102,241,0.5);
+    }
+
+    .action-button.secondary {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: rgba(247,247,251,0.9);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+
+    .detail-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 120px;
+    }
+
+    .detail-card h3 {
+      margin: 0;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(247,247,251,0.6);
+    }
+
+    .detail-card p {
+      margin: 0;
+      font-size: 14px;
+      color: rgba(247,247,251,0.9);
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+      background: rgba(247,247,251,0.08);
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .section-heading {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: rgba(247,247,251,0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .session-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .session-row {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .session-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: rgba(247,247,251,0.7);
+    }
+
+    .session-message {
+      font-size: 14px;
+      color: rgba(247,247,251,0.9);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .empty-state,
+    .empty-detail {
+      flex: 1;
+      border: 1px dashed rgba(255,255,255,0.15);
+      border-radius: 22px;
+      background: rgba(15,16,24,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 36px;
+      color: rgba(247,247,251,0.7);
+    }
+
+    .alert {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      color: #fecaca;
+      font-size: 14px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: clamp(16px, 4vw, 48px);
+      padding: 12px 16px;
+      background: rgba(15,15,25,0.92);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      color: rgba(247,247,251,0.9);
+      font-size: 13px;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.4);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 8, 12, 0.72);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .modal-panel {
+      width: min(500px, 90vw);
+      background: rgba(13, 15, 24, 0.96);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .settings-hint {
+      font-size: 12px;
+      color: rgba(247,247,251,0.6);
+    }
+
+    .settings-input {
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: rgba(11,13,22,0.9);
+      color: #f7f7fb;
+      outline: none;
+    }
+
+    .settings-input:focus {
+      border-color: rgba(99,102,241,0.7);
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
+    }
+
+
+    footer {
+      text-align: center;
+      padding: 18px;
+      font-size: 12px;
+      color: rgba(247,247,251,0.6);
+    }
+
+    @media (max-width: 980px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+      .sidebar,
+      .detail-panel {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>xlaude Dashboard</h1>
+      <p class="subtitle">Worktree-first cockpit · glanceable state · quick context recall</p>
+    </div>
+    <div class="header-menu">
+      <div id="last-update" class="subtitle">Waiting for data...</div>
+      <button id="settings-menu-btn" class="menu-button">⚙ Settings</button>
+    </div>
+  </header>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-title">
+        <span>Worktrees</span>
+        <span id="worktree-count">0</span>
+      </div>
+      <div id="worktree-list" class="worktree-list"></div>
+      <div id="sidebar-empty" class="empty-state" style="display:none;">No active worktrees. Run <code>xlaude create</code> or <code>xlaude add</code> to begin.</div>
+    </aside>
+    <section id="detail-panel" class="detail-panel">
+      <div class="empty-detail">Select a worktree to inspect prompts, git status, and session logs.</div>
+    </section>
+  </div>
+  <footer>
+    Built for parallel feature development · Keeps in sync automatically
+  </footer>
+  <div id="toast" class="toast"></div>
+  <div id="settings-modal" class="modal-backdrop hidden">
+    <div class="modal-panel">
+      <h2 class="detail-title" style="font-size:22px;">Dashboard Settings</h2>
+      <p class="settings-hint">Configure the commands used when launching the editor or terminal from the dashboard.</p>
+      <label for="modal-editor">Editor command</label>
+      <input id="modal-editor" class="settings-input" type="text" placeholder="e.g. code" />
+      <label for="modal-terminal">Terminal command</label>
+      <input id="modal-terminal" class="settings-input" type="text" placeholder="e.g. zsh -l" />
+      <div class="modal-actions">
+        <button id="modal-reset" class="action-button secondary" type="button">Reset</button>
+        <button id="modal-close" class="action-button secondary" type="button">Cancel</button>
+        <button id="modal-save" class="action-button" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const lastUpdateLabel = document.getElementById('last-update');
+    const worktreeList = document.getElementById('worktree-list');
+    const sidebarEmpty = document.getElementById('sidebar-empty');
+    const detailPanel = document.getElementById('detail-panel');
+    const worktreeCount = document.getElementById('worktree-count');
+    const toast = document.getElementById('toast');
+    const settingsMenuBtn = document.getElementById('settings-menu-btn');
+    const settingsModal = document.getElementById('settings-modal');
+    const modalEditorInput = document.getElementById('modal-editor');
+    const modalTerminalInput = document.getElementById('modal-terminal');
+    const modalSaveBtn = document.getElementById('modal-save');
+    const modalResetBtn = document.getElementById('modal-reset');
+    const modalCloseBtn = document.getElementById('modal-close');
+
+    const state = {
+      worktrees: [],
+      selectedKey: null,
+      timer: null,
+      settings: { editor: null, terminal: null },
+    };
+
+    const escapeHtml = (value = '') => (value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[char] || char));
+
+    const timeAgo = (value) => {
+      if (!value) return 'unknown';
+      const target = new Date(value).getTime();
+      if (!target) return 'unknown';
+      const diffMs = Date.now() - target;
+      if (diffMs < 60 * 1000) return 'just now';
+      const minutes = Math.floor(diffMs / (60 * 1000));
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    };
+
+    const truncate = (text, limit = 90) => {
+      if (!text) return '';
+      if (text.length <= limit) return text;
+      return `${text.slice(0, limit - 1)}…`;
+    };
+
+    function refresh(manual = false) {
+      fetch('/api/worktrees')
+        .then((resp) => {
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          return resp.json();
+        })
+        .then((payload) => {
+          state.worktrees = payload.worktrees || [];
+          worktreeCount.textContent = state.worktrees.length;
+          const prevSelection = state.selectedKey;
+          const hasPrev = state.worktrees.some((item) => item.key === prevSelection);
+          if (!hasPrev) {
+            state.selectedKey = state.worktrees[0]?.key ?? null;
+          }
+          renderSidebar();
+          renderDetail();
+          const when = new Date(payload.generatedAt).toLocaleTimeString();
+          lastUpdateLabel.textContent = `Updated ${when}`;
+        })
+        .catch((err) => {
+          worktreeList.innerHTML = '';
+          sidebarEmpty.style.display = 'flex';
+          detailPanel.innerHTML = `<div class="alert">Failed to load dashboard: ${escapeHtml(err.message)}</div>`;
+          worktreeCount.textContent = '0';
+          lastUpdateLabel.textContent = 'Last update failed';
+        });
+    }
+
+    async function loadSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        state.settings = {
+          editor: payload.editor ?? null,
+          terminal: payload.terminal ?? null,
+        };
+        renderDetail();
+      } catch (err) {
+        showToast(`Failed to load settings: ${err.message}`);
+      }
+    }
+
+    function renderSidebar() {
+      worktreeList.innerHTML = '';
+      if (!state.worktrees.length) {
+        sidebarEmpty.style.display = 'flex';
+        return;
+      }
+      sidebarEmpty.style.display = 'none';
+
+      const fragment = document.createDocumentFragment();
+      state.worktrees.forEach((tree) => {
+        const item = document.createElement('button');
+        item.className = 'worktree-item' + (tree.key === state.selectedKey ? ' active' : '');
+        item.dataset.key = tree.key;
+        const clean = tree.gitStatus?.clean;
+        const hasError = Boolean(tree.gitStatus?.error);
+        const dotClass = hasError ? 'dot error' : (clean ? 'dot' : 'dot dirty');
+        const statusLabel = hasError ? 'Unknown' : (clean ? 'Clean' : 'Dirty');
+        item.innerHTML = `
+          <div class="item-title">
+            <span>${escapeHtml(tree.name)}</span>
+            <span class="chip">${escapeHtml(tree.repoName)}</span>
+          </div>
+          <div class="item-subtitle">${escapeHtml(tree.branch)}</div>
+          <div class="status-dot"><span class="${dotClass}"></span>${statusLabel} · ${escapeHtml(timeAgo(tree.lastActivity))}</div>
+        `;
+        item.addEventListener('click', () => {
+          state.selectedKey = tree.key;
+          renderSidebar();
+          renderDetail();
+        });
+        fragment.appendChild(item);
+      });
+      worktreeList.appendChild(fragment);
+    }
+
+
+    function renderDetail() {
+      const current = state.worktrees.find((item) => item.key === state.selectedKey) || null;
+      if (!current) {
+        detailPanel.innerHTML = '<div class="empty-detail">Select a worktree to inspect prompts, git status, and session logs.</div>';
+        return;
+      }
+
+      const git = current.gitStatus || {};
+      const gitSummary = `Staged ${git.stagedFiles ?? 0} · Unstaged ${git.unstagedFiles ?? 0} · Untracked ${git.untrackedFiles ?? 0}`;
+      const sessions = current.sessions || [];
+      const sessionList = sessions.length
+        ? sessions.map((session) => `
+            <div class="session-row">
+              <div class="session-top">
+                <strong>${escapeHtml(session.provider)}</strong>
+                <span>${timeAgo(session.timestamp)}</span>
+              </div>
+              <div class="session-message">${escapeHtml(truncate(session.message || '(no user input)', 240))}</div>
+            </div>
+          `).join('')
+        : '<div class="empty-detail" style="min-height:120px;">No recent sessions surfaced yet.</div>';
+
+      const actions = buildActions(current);
+
+      detailPanel.innerHTML = `
+        <div class="detail-header">
+          <div>
+            <h2 class="detail-title">${escapeHtml(current.name)}</h2>
+            <div class="chip-row">
+              <span class="chip">${escapeHtml(current.repoName)}</span>
+              <span class="chip">${escapeHtml(current.branch)}</span>
+              <span class="chip">Created ${new Date(current.createdAt).toLocaleDateString()}</span>
+            </div>
+            <div class="action-row">
+              ${actions.map(action => `<button class="action-button" data-action="${escapeHtml(action.action)}">${escapeHtml(action.label)}</button>`).join('')}
+            </div>
+          </div>
+          <div class="chip-row">
+            <span class="chip">Last activity · ${timeAgo(current.lastActivity)}</span>
+            ${git.clean ? '<span class="chip">Git clean</span>' : '<span class="chip">Changes pending</span>'}
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-card">
+            <h3>Worktree Path</h3>
+            <p><code>${escapeHtml(current.path)}</code></p>
+            <p>${escapeHtml(gitSummary)}</p>
+          </div>
+          <div class="detail-card">
+            <h3>Last Commit</h3>
+            <p>${git.lastCommitMessage ? escapeHtml(truncate(git.lastCommitMessage, 160)) : 'No commits yet'}</p>
+            <p>${git.lastCommitTime ? new Date(git.lastCommitTime).toLocaleString() : ''}</p>
+          </div>
+          <div class="detail-card">
+            <h3>Diagnostics</h3>
+            <p>${git.error ? `<span class="alert">Git error · ${escapeHtml(git.error)}</span>` : 'Git commands OK'}</p>
+            <p>${current.sessionError ? `<span class="alert">Session error · ${escapeHtml(current.sessionError)}</span>` : 'Sessions loaded'}</p>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="section-heading">Change Breakdown</h3>
+          <div class="stat-grid">
+            ${renderStat('Staged', git.stagedFiles)}
+            ${renderStat('Unstaged', git.unstagedFiles)}
+            ${renderStat('Untracked', git.untrackedFiles)}
+            ${renderStat('Conflicts', git.conflictFiles)}
+          </div>
+        </div>
+
+        <div>
+          <h3 class="section-heading">Recent Sessions</h3>
+          <div class="session-list">${sessionList}</div>
+        </div>
+      `;
+
+      detailPanel.querySelectorAll('.action-button[data-action]').forEach((button) => {
+        button.addEventListener('click', () => triggerAction(current, button.dataset.action));
+      });
+    }
+
+    function renderStat(label, value) {
+      const display = typeof value === 'number' ? value : 0;
+      return `
+        <div class="stat-card">
+          <div class="stat-label">${escapeHtml(label)}</div>
+          <div class="stat-value">${display}</div>
+        </div>
+      `;
+    }
+
+    async function persistSettings(editorValue, terminalValue) {
+      const body = {
+        editor: normalizeSettingInput(editorValue),
+        terminal: normalizeSettingInput(terminalValue),
+      };
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        state.settings = payload;
+        renderDetail();
+        showToast('Settings saved');
+        closeSettingsModal();
+      } catch (err) {
+        showToast(`Save failed: ${err.message}`);
+      }
+    }
+
+    const normalizeSettingInput = (value) => {
+      if (value == null) return null;
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : null;
+    };
+
+    function openSettingsModal() {
+      modalEditorInput.value = state.settings?.editor ?? '';
+      modalTerminalInput.value = state.settings?.terminal ?? '';
+      settingsModal.classList.remove('hidden');
+      modalEditorInput.focus();
+    }
+
+    function closeSettingsModal() {
+      settingsModal.classList.add('hidden');
+    }
+
+    settingsMenuBtn.addEventListener('click', openSettingsModal);
+    modalCloseBtn.addEventListener('click', closeSettingsModal);
+    modalSaveBtn.addEventListener('click', () => persistSettings(modalEditorInput.value, modalTerminalInput.value));
+    modalResetBtn.addEventListener('click', () => persistSettings('', ''));
+    settingsModal.addEventListener('click', (event) => {
+      if (event.target === settingsModal) {
+        closeSettingsModal();
+      }
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !settingsModal.classList.contains('hidden')) {
+        closeSettingsModal();
+      }
+    });
+
+    function buildActions(current) {
+      return [
+        { label: 'Open Agent', action: 'open_agent' },
+        { label: 'Open Shell', action: 'open_shell' },
+        { label: 'Open Editor', action: 'open_editor' },
+      ];
+    }
+
+    async function triggerAction(current, action) {
+      if (!action) {
+        showToast('Action unavailable');
+        return;
+      }
+      const repo = encodeURIComponent(current.repoName);
+      const name = encodeURIComponent(current.name);
+      try {
+        const response = await fetch(`/api/worktrees/${repo}/${name}/actions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        showToast(payload.message || 'Action triggered');
+      } catch (err) {
+        showToast(`Action failed: ${err.message}`);
+      }
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    function boot() {
+      refresh(true);
+      loadSettings();
+      if (state.timer) clearInterval(state.timer);
+      state.timer = setInterval(() => refresh(false), 15000);
+    }
+
+    boot();
+  </script>
+</body>
+</html>
