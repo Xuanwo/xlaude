@@ -19,9 +19,13 @@ bip39 = "2.2.0"
 anyhow = "1.0.100"
 atty = "0.2.14"
 shell-words = "1.1.0"
-axum = { version = "0.7.9", features = ["macros", "json"] }
+axum = { version = "0.7.9", features = ["macros", "json", "ws"] }
 tokio = { version = "1.41.0", features = ["macros", "rt-multi-thread", "signal"] }
 webbrowser = "0.8.12"
+once_cell = "1.19.0"
+uuid = { version = "1.8.0", features = ["v4", "fast-rng"] }
+portable-pty = "0.8.1"
+futures-util = "0.3.31"
 
 [dev-dependencies]
 insta = { version = "1.43.2", features = ["json", "redactions"] }

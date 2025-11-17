@@ -6,22 +6,27 @@
   <title>xlaude Dashboard</title>
   <style>
     :root {
-      color-scheme: light dark;
+      color-scheme: light;
       font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background-color: #090b10;
+      background-color: #f6f7fb;
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
     body {
       margin: 0;
-      background: radial-gradient(circle at top, rgba(99,102,241,0.35), transparent 55%),
-        radial-gradient(circle at 20% 20%, rgba(56,189,248,0.2), transparent 40%),
-        #090b10;
-      color: #f7f7fb;
-      min-height: 100vh;
+      background: radial-gradient(circle at top, rgba(99,102,241,0.18), transparent 55%),
+        radial-gradient(circle at 20% 20%, rgba(56,189,248,0.15), transparent 40%),
+        #f6f7fb;
+      color: #111322;
       display: flex;
       flex-direction: column;
     }
@@ -39,11 +44,12 @@
       margin: 0;
       font-size: clamp(26px, 4vw, 36px);
       font-weight: 600;
+      color: #111322;
     }
 
     .subtitle {
       margin: 4px 0 0;
-      color: rgba(247,247,251,0.7);
+      color: rgba(17,19,34,0.55);
       font-size: 14px;
     }
 
@@ -54,27 +60,27 @@
     }
 
     .menu-button {
-      border: 1px solid rgba(255,255,255,0.15);
+      border: 1px solid rgba(17,19,34,0.15);
       border-radius: 999px;
       padding: 8px 16px;
-      background: rgba(255,255,255,0.06);
-      color: #f7f7fb;
+      background: rgba(255,255,255,0.9);
+      color: #111322;
       font-size: 13px;
       cursor: pointer;
       transition: background 0.15s ease, border 0.15s ease;
     }
 
     .menu-button:hover {
-      background: rgba(99,102,241,0.3);
-      border-color: rgba(99,102,241,0.6);
+      background: rgba(99,102,241,0.15);
+      border-color: rgba(99,102,241,0.4);
     }
 
     button {
       border: none;
       border-radius: 999px;
       padding: 9px 22px;
-      background: linear-gradient(120deg, #6366f1, #8b5cf6);
-      color: white;
+      background: linear-gradient(120deg, #4f46e5, #7c3aed);
+      color: #fff;
       font-size: 14px;
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.2s ease;
@@ -96,26 +102,29 @@
       display: grid;
       grid-template-columns: minmax(260px, 320px) 1fr;
       gap: 24px;
+      overflow: hidden;
     }
 
     .sidebar {
-      background: rgba(13, 16, 24, 0.85);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #ffffff;
+      border: 1px solid rgba(17,19,34,0.08);
       border-radius: 20px;
       padding: 20px 14px 18px;
-      box-shadow: 0 18px 30px rgba(0,0,0,0.35);
-      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+      backdrop-filter: blur(4px);
       display: flex;
       flex-direction: column;
       gap: 16px;
-      min-height: 520px;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
     .sidebar-title {
       font-size: 16px;
       font-weight: 600;
       margin: 0 6px;
-      color: rgba(247,247,251,0.85);
+      color: rgba(17,19,34,0.75);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -123,7 +132,7 @@
 
     .sidebar-title span {
       font-size: 13px;
-      color: rgba(247,247,251,0.6);
+      color: rgba(17,19,34,0.5);
     }
 
     .worktree-list {
@@ -136,10 +145,10 @@
     }
 
     .worktree-item {
-      border: 1px solid transparent;
+      border: 1px solid rgba(17,19,34,0.06);
       border-radius: 14px;
       padding: 10px 14px;
-      background: rgba(255,255,255,0.03);
+      background: rgba(248,250,255,0.9);
       cursor: pointer;
       transition: border 0.15s ease, background 0.15s ease;
       display: flex;
@@ -148,14 +157,14 @@
     }
 
     .worktree-item:hover {
-      border-color: rgba(255,255,255,0.15);
-      background: rgba(255,255,255,0.05);
+      border-color: rgba(79,70,229,0.2);
+      background: rgba(255,255,255,1);
     }
 
     .worktree-item.active {
-      border-color: rgba(99,102,241,0.9);
-      background: rgba(99,102,241,0.12);
-      box-shadow: inset 0 0 0 1px rgba(99,102,241,0.35);
+      border-color: rgba(79,70,229,0.6);
+      background: rgba(229,231,255,0.8);
+      box-shadow: inset 0 0 0 1px rgba(79,70,229,0.3);
     }
 
     .item-title {
@@ -164,11 +173,12 @@
       display: flex;
       justify-content: space-between;
       gap: 8px;
+      color: #111322;
     }
 
     .item-subtitle {
       font-size: 12px;
-      color: rgba(247,247,251,0.65);
+      color: rgba(17,19,34,0.5);
     }
 
     .status-dot {
@@ -176,7 +186,7 @@
       align-items: center;
       gap: 6px;
       font-size: 12px;
-      color: rgba(247,247,251,0.75);
+      color: rgba(17,19,34,0.6);
     }
 
     .dot {
@@ -184,24 +194,34 @@
       height: 10px;
       border-radius: 50%;
       display: inline-block;
-      background: #4ade80;
+      background: #16a34a;
     }
 
     .dot.dirty {
-      background: #fbbf24;
+      background: #f97316;
     }
 
     .dot.error {
-      background: #f87171;
+      background: #dc2626;
     }
 
     .detail-panel {
-      background: rgba(11, 13, 22, 0.9);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: #ffffff;
+      border: 1px solid rgba(17,19,34,0.08);
       border-radius: 24px;
       padding: 28px;
-      box-shadow: 0 18px 30px rgba(0,0,0,0.4);
-      min-height: 520px;
+      box-shadow: 0 18px 40px rgba(15,23,42,0.08);
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow: hidden;
+    }
+
+    .detail-scroll {
+      flex: 1;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 24px;
@@ -219,6 +239,7 @@
       margin: 0;
       font-size: clamp(22px, 3vw, 30px);
       font-weight: 600;
+      color: #111322;
     }
 
     .action-row {
@@ -229,9 +250,9 @@
     }
 
     .action-button {
-      border: 1px solid rgba(255,255,255,0.15);
-      background: rgba(255,255,255,0.04);
-      color: #f7f7fb;
+      border: 1px solid rgba(17,19,34,0.12);
+      background: rgba(79,70,229,0.08);
+      color: #111322;
       padding: 8px 18px;
       border-radius: 999px;
       font-size: 13px;
@@ -240,13 +261,13 @@
     }
 
     .action-button:hover {
-      background: rgba(99,102,241,0.25);
-      border-color: rgba(99,102,241,0.5);
+      background: rgba(79,70,229,0.15);
+      border-color: rgba(79,70,229,0.4);
     }
 
     .action-button.secondary {
-      background: rgba(255,255,255,0.06);
-      border-color: rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.9);
+      border-color: rgba(17,19,34,0.12);
     }
 
     .chip-row {
@@ -259,8 +280,8 @@
       font-size: 12px;
       padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      color: rgba(247,247,251,0.9);
+      background: rgba(79,70,229,0.12);
+      color: rgba(17,19,34,0.75);
     }
 
     .detail-grid {
@@ -272,8 +293,8 @@
     .detail-card {
       padding: 16px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(248,250,255,0.8);
+      border: 1px solid rgba(17,19,34,0.08);
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -285,20 +306,20 @@
       font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: rgba(247,247,251,0.6);
+      color: rgba(17,19,34,0.5);
     }
 
     .detail-card p {
       margin: 0;
       font-size: 14px;
-      color: rgba(247,247,251,0.9);
-      line-height: 1.5;
+      color: rgba(17,19,34,0.8);
+      line-height: 1.4;
       word-break: break-word;
     }
 
     code {
       font-family: 'JetBrains Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
-      background: rgba(247,247,251,0.08);
+      background: rgba(79,70,229,0.12);
       padding: 2px 6px;
       border-radius: 8px;
       font-size: 13px;
@@ -308,6 +329,7 @@
       margin: 0 0 8px;
       font-size: 16px;
       font-weight: 600;
+      color: #111322;
     }
 
     .stat-grid {
@@ -319,13 +341,13 @@
     .stat-card {
       padding: 12px;
       border-radius: 16px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.05);
+      background: rgba(248,250,255,0.8);
+      border: 1px solid rgba(17,19,34,0.08);
     }
 
     .stat-label {
       font-size: 12px;
-      color: rgba(247,247,251,0.6);
+      color: rgba(17,19,34,0.55);
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
@@ -333,6 +355,7 @@
     .stat-value {
       font-size: 24px;
       font-weight: 600;
+      color: #111322;
     }
 
     .session-list {
@@ -341,11 +364,126 @@
       gap: 12px;
     }
 
+    .live-log {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(17,19,34,0.08);
+      background: rgba(15,23,42,0.05);
+      padding: 14px;
+      font-family: 'JetBrains Mono', SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+      font-size: 13px;
+      line-height: 1.25;
+      white-space: pre-wrap;
+    }
+
+    .live-line {
+      margin-bottom: 4px;
+      color: rgba(17,19,34,0.85);
+    }
+
+    .live-line.user {
+      color: #312e81;
+    }
+
+    .live-line.user .prompt {
+      color: rgba(17,19,34,0.5);
+      margin-right: 6px;
+    }
+
+    .live-line.status {
+      color: rgba(17,19,34,0.55);
+      font-style: italic;
+    }
+
+    .live-log-empty {
+      text-align: center;
+      padding: 20px 0;
+      color: rgba(17,19,34,0.55);
+      font-size: 13px;
+    }
+
+    .session-live-wrapper {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow: hidden;
+    }
+
+    .session-live-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .session-status {
+      font-size: 12px;
+      color: rgba(17,19,34,0.55);
+    }
+
+    .chat-form {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .chat-input {
+      flex: 1;
+      border: 1px solid rgba(17,19,34,0.15);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: #fff;
+      color: #111322;
+      resize: vertical;
+      min-height: 48px;
+      font-family: inherit;
+    }
+
+
+    .settings-hint {
+      font-size: 12px;
+      color: rgba(17,19,34,0.55);
+    }
+
+    .settings-input {
+      border: 1px solid rgba(17,19,34,0.15);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fff;
+      color: #111322;
+      outline: none;
+    }
+
+    .settings-input:focus {
+      border-color: rgba(79,70,229,0.6);
+      box-shadow: 0 0 0 2px rgba(79,70,229,0.18);
+    }
+
+
+    .empty-state,
+    .empty-detail {
+      border: 1px dashed rgba(17,19,34,0.2);
+      border-radius: 16px;
+      padding: 18px 14px;
+      text-align: center;
+      color: rgba(17,19,34,0.55);
+      font-size: 14px;
+    }
+
+    .alert {
+      color: #fcd34d;
+    }
+
     .session-row {
       padding: 12px 14px;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 14px;
+      border: 1px solid rgba(17,19,34,0.08);
+      background: rgba(248,250,255,0.8);
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -354,55 +492,41 @@
     .session-top {
       display: flex;
       justify-content: space-between;
-      font-size: 13px;
-      color: rgba(247,247,251,0.7);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(17,19,34,0.5);
     }
 
     .session-message {
-      font-size: 14px;
-      color: rgba(247,247,251,0.9);
-      white-space: pre-wrap;
-      word-break: break-word;
+      font-size: 13px;
+      color: rgba(17,19,34,0.75);
+      line-height: 1.4;
     }
 
-    .empty-state,
-    .empty-detail {
-      flex: 1;
-      border: 1px dashed rgba(255,255,255,0.15);
-      border-radius: 22px;
-      background: rgba(15,16,24,0.6);
+    .live-header {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 36px;
-      color: rgba(247,247,251,0.7);
-    }
-
-    .alert {
-      padding: 12px 14px;
-      border-radius: 16px;
-      background: rgba(248, 113, 113, 0.12);
-      border: 1px solid rgba(248, 113, 113, 0.45);
-      color: #fecaca;
-      font-size: 14px;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
     }
 
     .toast {
       position: fixed;
       bottom: 24px;
-      right: clamp(16px, 4vw, 48px);
-      padding: 12px 16px;
-      background: rgba(15,15,25,0.92);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 14px;
-      color: rgba(247,247,251,0.9);
-      font-size: 13px;
-      box-shadow: 0 12px 26px rgba(0,0,0,0.4);
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid rgba(17,19,34,0.1);
+      box-shadow: 0 12px 30px rgba(15,23,42,0.15);
       opacity: 0;
-      pointer-events: none;
-      transform: translateY(10px);
+      transform: translateY(16px);
       transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+      z-index: 1500;
+      font-size: 13px;
+      color: #111322;
     }
 
     .toast.show {
@@ -413,30 +537,37 @@
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(7, 8, 12, 0.72);
+      background: rgba(15,23,42,0.35);
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 50;
+      z-index: 1400;
+      backdrop-filter: blur(4px);
     }
 
     .modal-panel {
-      width: min(500px, 90vw);
-      background: rgba(13, 15, 24, 0.96);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 24px;
-      padding: 28px;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.55);
+      width: min(420px, calc(100% - 48px));
+      padding: 24px;
+      border-radius: 20px;
+      background: #ffffff;
+      border: 1px solid rgba(17,19,34,0.12);
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.55);
+    }
+
+    .modal-panel label {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(17,19,34,0.55);
     }
 
     .modal-actions {
       display: flex;
       justify-content: flex-end;
       gap: 10px;
-      flex-wrap: wrap;
       margin-top: 8px;
     }
 
@@ -444,32 +575,12 @@
       display: none !important;
     }
 
-    .settings-hint {
-      font-size: 12px;
-      color: rgba(247,247,251,0.6);
-    }
-
-    .settings-input {
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 14px;
-      background: rgba(11,13,22,0.9);
-      color: #f7f7fb;
-      outline: none;
-    }
-
-    .settings-input:focus {
-      border-color: rgba(99,102,241,0.7);
-      box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
-    }
-
 
     footer {
       text-align: center;
       padding: 18px;
       font-size: 12px;
-      color: rgba(247,247,251,0.6);
+      color: rgba(17,19,34,0.55);
     }
 
     @media (max-width: 980px) {
@@ -487,7 +598,6 @@
   <header>
     <div>
       <h1>xlaude Dashboard</h1>
-      <p class="subtitle">Worktree-first cockpit · glanceable state · quick context recall</p>
     </div>
     <div class="header-menu">
       <div id="last-update" class="subtitle">Waiting for data...</div>
@@ -504,12 +614,11 @@
       <div id="sidebar-empty" class="empty-state" style="display:none;">No active worktrees. Run <code>xlaude create</code> or <code>xlaude add</code> to begin.</div>
     </aside>
     <section id="detail-panel" class="detail-panel">
-      <div class="empty-detail">Select a worktree to inspect prompts, git status, and session logs.</div>
+      <div class="detail-scroll">
+        <div class="empty-detail">Select a worktree to inspect prompts, git status, and session logs.</div>
+      </div>
     </section>
   </div>
-  <footer>
-    Built for parallel feature development · Keeps in sync automatically
-  </footer>
   <div id="toast" class="toast"></div>
   <div id="settings-modal" class="modal-backdrop hidden">
     <div class="modal-panel">
@@ -547,7 +656,18 @@
       selectedKey: null,
       timer: null,
       settings: { editor: null, terminal: null },
+      liveSessions: {},
+      sessionIndex: {},
     };
+
+    const ansiRegex = new RegExp(
+      '[\\u001B\\u009B][[\\]()#;?]*(?:' +
+        '(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><~]' +
+      ')',
+      'g'
+    );
+
+    const stripAnsi = (value = '') => value.replace(ansiRegex, '');
 
     const escapeHtml = (value = '') => (value ?? '').replace(/[&<>"']/g, char => ({
       '&': '&amp;',
@@ -659,9 +779,10 @@
     function renderDetail() {
       const current = state.worktrees.find((item) => item.key === state.selectedKey) || null;
       if (!current) {
-        detailPanel.innerHTML = '<div class="empty-detail">Select a worktree to inspect prompts, git status, and session logs.</div>';
+        detailPanel.innerHTML = '<div class="detail-scroll"><div class="empty-detail">Select a worktree to inspect prompts, git status, and session logs.</div></div>';
         return;
       }
+
 
       const git = current.gitStatus || {};
       const gitSummary = `Staged ${git.stagedFiles ?? 0} · Unstaged ${git.unstagedFiles ?? 0} · Untracked ${git.untrackedFiles ?? 0}`;
@@ -678,64 +799,91 @@
           `).join('')
         : '<div class="empty-detail" style="min-height:120px;">No recent sessions surfaced yet.</div>';
 
-      const actions = buildActions(current);
+      const liveSession = state.liveSessions[current.key];
+      const actions = buildActions(current, Boolean(liveSession));
 
-      detailPanel.innerHTML = `
-        <div class="detail-header">
-          <div>
-            <h2 class="detail-title">${escapeHtml(current.name)}</h2>
+      if (liveSession) {
+        detailPanel.innerHTML = `
+          <div class="detail-header">
+            <div>
+              <h2 class="detail-title">${escapeHtml(current.name)}</h2>
+              <div class="chip-row">
+                <span class="chip">${escapeHtml(current.repoName)}</span>
+                <span class="chip">${escapeHtml(current.branch)}</span>
+              </div>
+              <div class="action-row">
+                ${actions.map(action => `<button class="action-button" data-action="${escapeHtml(action.action)}">${escapeHtml(action.label)}</button>`).join('')}
+              </div>
+            </div>
             <div class="chip-row">
-              <span class="chip">${escapeHtml(current.repoName)}</span>
-              <span class="chip">${escapeHtml(current.branch)}</span>
-              <span class="chip">Created ${new Date(current.createdAt).toLocaleDateString()}</span>
-            </div>
-            <div class="action-row">
-              ${actions.map(action => `<button class="action-button" data-action="${escapeHtml(action.action)}">${escapeHtml(action.label)}</button>`).join('')}
+              <span class="chip">Live session</span>
             </div>
           </div>
-          <div class="chip-row">
-            <span class="chip">Last activity · ${timeAgo(current.lastActivity)}</span>
-            ${git.clean ? '<span class="chip">Git clean</span>' : '<span class="chip">Changes pending</span>'}
+          ${renderLiveView(current, liveSession)}
+        `;
+      } else {
+        const content = `
+          <div class="detail-header">
+            <div>
+              <h2 class="detail-title">${escapeHtml(current.name)}</h2>
+              <div class="chip-row">
+                <span class="chip">${escapeHtml(current.repoName)}</span>
+                <span class="chip">${escapeHtml(current.branch)}</span>
+                <span class="chip">Created ${new Date(current.createdAt).toLocaleDateString()}</span>
+              </div>
+              <div class="action-row">
+                ${actions.map(action => `<button class="action-button" data-action="${escapeHtml(action.action)}">${escapeHtml(action.label)}</button>`).join('')}
+              </div>
+            </div>
+            <div class="chip-row">
+              <span class="chip">Last activity · ${timeAgo(current.lastActivity)}</span>
+              ${git.clean ? '<span class="chip">Git clean</span>' : '<span class="chip">Changes pending</span>'}
+            </div>
           </div>
-        </div>
 
-        <div class="detail-grid">
-          <div class="detail-card">
-            <h3>Worktree Path</h3>
-            <p><code>${escapeHtml(current.path)}</code></p>
-            <p>${escapeHtml(gitSummary)}</p>
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h3>Worktree Path</h3>
+              <p><code>${escapeHtml(current.path)}</code></p>
+              <p>${escapeHtml(gitSummary)}</p>
+            </div>
+            <div class="detail-card">
+              <h3>Last Commit</h3>
+              <p>${git.lastCommitMessage ? escapeHtml(truncate(git.lastCommitMessage, 160)) : 'No commits yet'}</p>
+              <p>${git.lastCommitTime ? new Date(git.lastCommitTime).toLocaleString() : ''}</p>
+            </div>
+            <div class="detail-card">
+              <h3>Diagnostics</h3>
+              <p>${git.error ? `<span class="alert">Git error · ${escapeHtml(git.error)}</span>` : 'Git commands OK'}</p>
+              <p>${current.sessionError ? `<span class="alert">Session error · ${escapeHtml(current.sessionError)}</span>` : 'Sessions loaded'}</p>
+            </div>
           </div>
-          <div class="detail-card">
-            <h3>Last Commit</h3>
-            <p>${git.lastCommitMessage ? escapeHtml(truncate(git.lastCommitMessage, 160)) : 'No commits yet'}</p>
-            <p>${git.lastCommitTime ? new Date(git.lastCommitTime).toLocaleString() : ''}</p>
-          </div>
-          <div class="detail-card">
-            <h3>Diagnostics</h3>
-            <p>${git.error ? `<span class="alert">Git error · ${escapeHtml(git.error)}</span>` : 'Git commands OK'}</p>
-            <p>${current.sessionError ? `<span class="alert">Session error · ${escapeHtml(current.sessionError)}</span>` : 'Sessions loaded'}</p>
-          </div>
-        </div>
 
-        <div>
-          <h3 class="section-heading">Change Breakdown</h3>
-          <div class="stat-grid">
-            ${renderStat('Staged', git.stagedFiles)}
-            ${renderStat('Unstaged', git.unstagedFiles)}
-            ${renderStat('Untracked', git.untrackedFiles)}
-            ${renderStat('Conflicts', git.conflictFiles)}
+          <div>
+            <h3 class="section-heading">Change Breakdown</h3>
+            <div class="stat-grid">
+              ${renderStat('Staged', git.stagedFiles)}
+              ${renderStat('Unstaged', git.unstagedFiles)}
+              ${renderStat('Untracked', git.untrackedFiles)}
+              ${renderStat('Conflicts', git.conflictFiles)}
+            </div>
           </div>
-        </div>
 
-        <div>
-          <h3 class="section-heading">Recent Sessions</h3>
-          <div class="session-list">${sessionList}</div>
-        </div>
-      `;
+          <div>
+            <h3 class="section-heading">Recent Sessions</h3>
+            <div class="session-list">${sessionList}</div>
+          </div>
+        `;
+        detailPanel.innerHTML = `<div class="detail-scroll">${content}</div>`;
+      }
 
       detailPanel.querySelectorAll('.action-button[data-action]').forEach((button) => {
         button.addEventListener('click', () => triggerAction(current, button.dataset.action));
       });
+
+      if (liveSession) {
+        bindLiveForm(current);
+      }
     }
 
     function renderStat(label, value) {
@@ -747,6 +895,224 @@
         </div>
       `;
     }
+
+    async function startLiveSession(current) {
+      const key = current.key;
+      if (state.liveSessions[key]) {
+        showToast('Live session already active');
+        return;
+      }
+      try {
+        const response = await fetch(`/api/worktrees/${encodeURIComponent(current.repoName)}/${encodeURIComponent(current.name)}/live-session`, {
+          method: 'POST',
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        registerSession(key, payload);
+        connectSessionStream(key);
+        renderDetail();
+        showToast('Live session started');
+      } catch (err) {
+        showToast(`Failed to start session: ${err.message}`);
+      }
+    }
+
+    function registerSession(key, payload) {
+      const sessionId = payload.sessionId ?? payload.session_id;
+      if (!sessionId) {
+        throw new Error('Missing session id');
+      }
+      const session = {
+        id: sessionId,
+        events: [],
+        socket: null,
+        connected: false,
+        loading: true,
+        lastSequence: -1,
+      };
+      const initialEvents = Array.isArray(payload.events) ? [...payload.events] : [];
+      initialEvents
+        .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+        .forEach((event) => appendSessionEvent(session, event));
+      state.liveSessions[key] = session;
+      state.sessionIndex[session.id] = key;
+    }
+
+    function appendSessionEvent(session, event) {
+      if (typeof event.sequence === 'number' && event.sequence <= session.lastSequence) {
+        return;
+      }
+      session.events.push(event);
+      if (typeof event.sequence === 'number') {
+        session.lastSequence = event.sequence;
+      }
+      if (session.events.length > 500) {
+        session.events.shift();
+      }
+    }
+
+    function connectSessionStream(key) {
+      const session = state.liveSessions[key];
+      if (!session || session.socket) {
+        return;
+      }
+      session.loading = true;
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${protocol}://${window.location.host}/api/sessions/${session.id}/stream`);
+      session.socket = ws;
+      ws.onopen = () => {
+        session.connected = true;
+        session.loading = false;
+        if (state.selectedKey === key) {
+          renderDetail();
+        }
+      };
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          handleSessionEvent(key, payload);
+        } catch (_) {
+          // ignore malformed payloads
+        }
+      };
+      ws.onclose = () => {
+        session.connected = false;
+        session.loading = false;
+        session.socket = null;
+        if (state.selectedKey === key) {
+          renderDetail();
+        }
+      };
+      ws.onerror = () => {
+        session.connected = false;
+        session.loading = false;
+        if (state.selectedKey === key) {
+          renderDetail();
+        }
+      };
+    }
+
+    function handleSessionEvent(key, event) {
+      const session = state.liveSessions[key];
+      if (!session) {
+        return;
+      }
+      appendSessionEvent(session, event);
+      if (event.kind === 'status' && event.status === 'stopped') {
+        cleanupSession(key);
+        renderDetail();
+        showToast('Live session ended');
+        return;
+      }
+      if (state.selectedKey === key) {
+        updateLiveLog(key);
+      }
+    }
+
+    function cleanupSession(key) {
+      const session = state.liveSessions[key];
+      if (!session) return;
+      if (session.socket) {
+        session.socket.close();
+      }
+      delete state.sessionIndex[session.id];
+      delete state.liveSessions[key];
+    }
+
+    function renderLogContent(session) {
+      if (!session.events.length) {
+        return '<div class="live-log-empty">No output yet</div>';
+      }
+      return session.events.map(renderLogLine).join('');
+    }
+
+    function renderLogLine(event) {
+      if (event.kind === 'status') {
+        const label = escapeHtml(event.status || 'status');
+        const detail = event.detail ? ` · ${escapeHtml(event.detail)}` : '';
+        return `<div class="live-line status">${label}${detail}</div>`;
+      }
+      const role = event.role || 'assistant';
+      const raw = stripAnsi(event.text || '').replace(/\r/g, '');
+      const normalized = raw.replace(/\n+$/, '');
+      const content = escapeHtml(normalized).replace(/\n/g, '<br>');
+      if (role === 'user') {
+        return `<div class="live-line user"><span class="prompt">&gt;</span>${content}</div>`;
+      }
+      return `<div class="live-line">${content}</div>`;
+    }
+
+    async function sendLiveMessage(sessionId, message) {
+      try {
+        const response = await fetch(`/api/sessions/${sessionId}/send`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        });
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `HTTP ${response.status}`);
+        }
+      } catch (err) {
+        showToast(`Send failed: ${err.message}`);
+      }
+    }
+
+    function updateLiveLog(key) {
+      if (state.selectedKey !== key) return;
+      const session = state.liveSessions[key];
+      const log = detailPanel.querySelector('.live-log[data-log]');
+      if (!session || !log) return;
+      log.innerHTML = renderLogContent(session);
+      scrollLiveLog(key);
+    }
+
+    function scrollLiveLog(key) {
+      if (state.selectedKey !== key) return;
+      const log = detailPanel.querySelector('.live-log[data-log]');
+      if (log) {
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+
+    function renderLiveView(current, session) {
+      const status = session.connected ? 'Connected' : (session.loading ? 'Connecting…' : 'Disconnected');
+      const disabled = session.loading || !session.connected;
+      return `
+        <div class="session-live-wrapper" data-session="${session.id}">
+          <div class="session-live-header">
+            <span class="section-heading">Live Session</span>
+            <span class="session-status">${escapeHtml(status)}</span>
+          </div>
+          <div class="live-log" data-log="${session.id}">${renderLogContent(session)}</div>
+          <form id="live-form" class="chat-form">
+            <textarea id="live-input" class="chat-input" rows="2" placeholder="Send a message..." ${disabled ? 'disabled' : ''}></textarea>
+            <button class="action-button" type="submit" ${disabled ? 'disabled' : ''}>Send</button>
+          </form>
+        </div>
+      `;
+    }
+
+    function bindLiveForm(current) {
+      const key = current.key;
+      const form = detailPanel.querySelector('#live-form');
+      if (!form) return;
+      const input = form.querySelector('#live-input');
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const session = state.liveSessions[key];
+        if (!session || !session.connected) return;
+        const value = input.value.trim();
+        if (!value) return;
+        sendLiveMessage(session.id, value);
+        input.value = '';
+      });
+      scrollLiveLog(key);
+    }
+
 
     async function persistSettings(editorValue, terminalValue) {
       const body = {
@@ -805,12 +1171,16 @@
       }
     });
 
-    function buildActions(current) {
-      return [
+    function buildActions(current, hasSession) {
+      const actions = [
         { label: 'Open Agent', action: 'open_agent' },
         { label: 'Open Shell', action: 'open_shell' },
         { label: 'Open Editor', action: 'open_editor' },
       ];
+      if (!hasSession) {
+        actions.push({ label: 'Start Live Session', action: 'start_live' });
+      }
+      return actions;
     }
 
     async function triggerAction(current, action) {
@@ -820,6 +1190,10 @@
       }
       const repo = encodeURIComponent(current.repoName);
       const name = encodeURIComponent(current.name);
+      if (action === 'start_live') {
+        startLiveSession(current);
+        return;
+      }
       try {
         const response = await fetch(`/api/worktrees/${repo}/${name}/actions`, {
           method: 'POST',

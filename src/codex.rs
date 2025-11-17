@@ -335,7 +335,7 @@ pub fn collect_recent_sessions_for_paths(
             continue;
         }
 
-        let entry = map.entry(normalized.clone()).or_insert_with(Vec::new);
+        let entry = map.entry(normalized.clone()).or_default();
         if entry.len() >= limit {
             satisfied.insert(normalized);
             continue;
