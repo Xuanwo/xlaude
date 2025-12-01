@@ -32,7 +32,7 @@ _xlaude() {{
     fi
 
     # Main commands
-    local commands="create open delete add rename list clean dir completions"
+    local commands="create checkout open delete add rename list clean dir completions config dashboard"
 
     # Complete main commands
     if [[ $cword -eq 1 ]]; then
@@ -56,10 +56,19 @@ _xlaude() {{
                 COMPREPLY=($(compgen -W "$worktrees" -- "$cur"))
             fi
             ;;
+        checkout)
+            if [[ $cword -eq 2 ]]; then
+                # Accept branch name or PR number
+                COMPREPLY=()
+            fi
+            ;;
         completions)
             if [[ $cword -eq 2 ]]; then
                 COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur"))
             fi
+            ;;
+        config|dashboard)
+            return
             ;;
     esac
 }}
@@ -78,6 +87,7 @@ _xlaude() {{
     commands=(
         'create:Create a new git worktree'
         'open:Open an existing worktree and launch Claude'
+        'checkout:Checkout a branch or pull request into a worktree'
         'delete:Delete a worktree and clean up'
         'add:Add current worktree to xlaude management'
         'rename:Rename a worktree'
@@ -85,6 +95,8 @@ _xlaude() {{
         'clean:Clean up invalid worktrees from state'
         'dir:Get the directory path of a worktree'
         'completions:Generate shell completions'
+        'config:Open the xlaude state file in $EDITOR'
+        'dashboard:Launch the embedded dashboard'
     )
 
     # Main command completion
@@ -112,12 +124,21 @@ _xlaude() {{
                 _message "worktree name"
             fi
             ;;
+        checkout)
+            if (( CURRENT == 3 )); then
+                _message "branch name or pull request number"
+            fi
+            ;;
         completions)
             if (( CURRENT == 3 )); then
                 local -a shells
                 shells=(bash zsh fish)
                 _describe 'shell' shells
             fi
+            ;;
+        config|dashboard)
+            # No additional arguments
+            return
             ;;
     esac
 }}
@@ -177,7 +198,10 @@ complete -c xlaude -n "__fish_use_subcommand" -a rename -d "Rename a worktree"
 complete -c xlaude -n "__fish_use_subcommand" -a list -d "List all active Claude instances"
 complete -c xlaude -n "__fish_use_subcommand" -a clean -d "Clean up invalid worktrees from state"
 complete -c xlaude -n "__fish_use_subcommand" -a dir -d "Get the directory path of a worktree"
+complete -c xlaude -n "__fish_use_subcommand" -a checkout -d "Checkout a branch or pull request into a worktree"
 complete -c xlaude -n "__fish_use_subcommand" -a completions -d "Generate shell completions"
+complete -c xlaude -n "__fish_use_subcommand" -a config -d "Open the xlaude state file in $EDITOR"
+complete -c xlaude -n "__fish_use_subcommand" -a dashboard -d "Launch the embedded dashboard"
 
 # Function to get worktree completions with repo markers
 function __xlaude_worktrees
